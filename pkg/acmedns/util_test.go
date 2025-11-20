@@ -229,6 +229,11 @@ func TestReadConfigFallbackError(t *testing.T) {
 }
 
 func TestFileCheckPermissionDenied(t *testing.T) {
+	uid := syscall.Getuid()
+	if uid == 0 {
+		t.Skip("Skipping permission denial test as root user can bypass 0000 permissions.")
+		return
+	}
 	tmpfile, err := os.CreateTemp("", "acmedns")
 	if err != nil {
 		t.Fatalf("Could not create temporary file: %s", err)
