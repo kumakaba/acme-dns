@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/joohoi/acme-dns/pkg/acmedns"
-	"github.com/joohoi/acme-dns/pkg/database"
-	"github.com/joohoi/acme-dns/pkg/nameserver"
+	"github.com/kumakaba/acme-dns/pkg/acmedns"
+	"github.com/kumakaba/acme-dns/pkg/database"
+	"github.com/kumakaba/acme-dns/pkg/nameserver"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/caddyserver/certmagic"

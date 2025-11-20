@@ -1,4 +1,4 @@
-module github.com/joohoi/acme-dns
+module github.com/kumakaba/acme-dns
 
 go 1.23.0
 

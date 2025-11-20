@@ -6,10 +6,10 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/joohoi/acme-dns/pkg/acmedns"
-	"github.com/joohoi/acme-dns/pkg/api"
-	"github.com/joohoi/acme-dns/pkg/database"
-	"github.com/joohoi/acme-dns/pkg/nameserver"
+	"github.com/kumakaba/acme-dns/pkg/acmedns"
+	"github.com/kumakaba/acme-dns/pkg/api"
+	"github.com/kumakaba/acme-dns/pkg/database"
+	"github.com/kumakaba/acme-dns/pkg/nameserver"
 
 	"go.uber.org/zap"
 )

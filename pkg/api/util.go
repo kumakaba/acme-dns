@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/joohoi/acme-dns/pkg/acmedns"
+	"github.com/kumakaba/acme-dns/pkg/acmedns"
 )
 
 func jsonError(message string) []byte {

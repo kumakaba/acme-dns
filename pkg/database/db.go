@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/joohoi/acme-dns/pkg/acmedns"
+	"github.com/kumakaba/acme-dns/pkg/acmedns"
 )
 
 type acmednsdb struct {
