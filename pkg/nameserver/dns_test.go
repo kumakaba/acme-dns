@@ -79,36 +79,36 @@ func (r *resolver) lookup(host string, qtype uint16) (*dns.Msg, error) {
 }
 
 func TestShutdownNilServer(t *testing.T) {
-    ns := &Nameserver{
-        Server: nil,
-    }
+	ns := &Nameserver{
+		Server: nil,
+	}
 
-    err := ns.Shutdown()
+	err := ns.Shutdown()
 
-    if err != nil {
-        t.Errorf("Expected nil error when shutting down nil server, but got %v", err)
-    }
+	if err != nil {
+		t.Errorf("Expected nil error when shutting down nil server, but got %v", err)
+	}
 }
 
 func TestShutdownError(t *testing.T) {
-    server, _, _ := setupDNS()
+	server, _, _ := setupDNS()
 
-    ns, ok := server.(*Nameserver)
-    if !ok {
-        t.Fatal("Could not cast interface to *Nameserver")
-    }
+	ns, ok := server.(*Nameserver)
+	if !ok {
+		t.Fatal("Could not cast interface to *Nameserver")
+	}
 
-    err := ns.Shutdown()
+	err := ns.Shutdown()
 
-    if err == nil {
-        t.Error("Expected error 'dns: not started', but got nil")
-        return
-    }
+	if err == nil {
+		t.Error("Expected error 'dns: not started', but got nil")
+		return
+	}
 
-    expectedMsg := "dns: server not started"
-    if err.Error() != expectedMsg {
-        t.Errorf("Expected error %q, but got %q", expectedMsg, err.Error())
-    }
+	expectedMsg := "dns: server not started"
+	if err.Error() != expectedMsg {
+		t.Errorf("Expected error %q, but got %q", expectedMsg, err.Error())
+	}
 }
 
 func TestQuestionDBError(t *testing.T) {
@@ -169,17 +169,17 @@ func TestParse(t *testing.T) {
 func TestResolveA(t *testing.T) {
 	// startTestDNS -------------
 	server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
 	// -------------
 	resolv := resolver{server: "127.0.0.1:15353"}
 	answer, err := resolv.lookup("auth.example.org", dns.TypeA)
@@ -203,17 +203,17 @@ func TestResolveA(t *testing.T) {
 func TestEDNS(t *testing.T) {
 	// startTestDNS -------------
 	server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
 	// -------------
 	resolv := resolver{server: "127.0.0.1:15353"}
 	answer, _ := resolv.lookup("auth.example.org", dns.TypeOPT)
@@ -225,17 +225,17 @@ func TestEDNS(t *testing.T) {
 func TestEDNSA(t *testing.T) {
 	// startTestDNS -------------
 	server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
 	// -------------
 	msg := new(dns.Msg)
 	msg.Id = dns.Id()
@@ -259,17 +259,17 @@ func TestEDNSA(t *testing.T) {
 func TestEDNSBADVERS(t *testing.T) {
 	// startTestDNS -------------
 	server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
 	// -------------
 	msg := new(dns.Msg)
 	msg.Id = dns.Id()
@@ -293,17 +293,17 @@ func TestEDNSBADVERS(t *testing.T) {
 func TestResolveCNAME(t *testing.T) {
 	// startTestDNS -------------
 	server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
 	// -------------
 	resolv := resolver{server: "127.0.0.1:15353"}
 	expected := "cn.example.org.	3600	IN	CNAME	something.example.org."
@@ -325,17 +325,17 @@ func TestResolveCNAME(t *testing.T) {
 func TestAuthoritative(t *testing.T) {
 	// startTestDNS -------------
 	server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
 	// -------------
 	resolv := resolver{server: "127.0.0.1:15353"}
 	answer, _ := resolv.lookup("nonexistent.auth.example.org", dns.TypeA)
@@ -363,17 +363,17 @@ func TestAuthoritative(t *testing.T) {
 func TestResolveTXT(t *testing.T) {
 	// startTestDNS -------------
 	server, db, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
 	// -------------
 	resolv := resolver{server: "127.0.0.1:15353"}
 	validTXT := "______________valid_response_______________"
@@ -417,7 +417,7 @@ func TestResolveTXT(t *testing.T) {
 		{atxt.Subdomain, validTXT, true, false, true},
 	} {
 		targetFQDN := "auth.example.org"
-		if( test.subDomain != "" ) {
+		if test.subDomain != "" {
 			targetFQDN = test.subDomain + "." + targetFQDN
 		}
 		answer, err := resolv.lookup(targetFQDN, dns.TypeTXT)
@@ -490,21 +490,20 @@ func hasExpectedTXTAnswer(answer []dns.RR, cmpTXT string) error {
 	return errors.New("Expected answer not found")
 }
 
-
 func TestCaseInsensitiveResolveA(t *testing.T) {
 	// startTestDNS -------------
 	server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
 	// -------------
 	resolv := resolver{server: "127.0.0.1:15353"}
 	answer, err := resolv.lookup("aUtH.eXAmpLe.org", dns.TypeA)
@@ -520,17 +519,17 @@ func TestCaseInsensitiveResolveA(t *testing.T) {
 func TestCaseInsensitiveResolveSOA(t *testing.T) {
 	// startTestDNS -------------
 	server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
 	// -------------
 	resolv := resolver{server: "127.0.0.1:15353"}
 	answer, _ := resolv.lookup("doesnotexist.aUtH.eXAmpLe.org", dns.TypeSOA)
@@ -543,162 +542,158 @@ func TestCaseInsensitiveResolveSOA(t *testing.T) {
 	}
 }
 
-
 //////////////////////////////////////////////////
 // ATTACK TEST
 //////////////////////////////////////////////////
 
 func TestResilienceToGarbageUDP(t *testing.T) {
-    addr := "127.0.0.1:15353"
-    // startTestDNS -------------
-    server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
-    // -------------
+	addr := "127.0.0.1:15353"
+	// startTestDNS -------------
+	server, _, _ := setupDNS()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
+	// -------------
 
-    conn, err := net.Dial("udp", addr)
-    if err != nil {
-        t.Fatalf("Could not connect to server: %v", err)
-    }
-    defer conn.Close()
+	conn, err := net.Dial("udp", addr)
+	if err != nil {
+		t.Fatalf("Could not connect to server: %v", err)
+	}
+	defer conn.Close()
 
-    garbage := []byte("THIS_IS_NOT_A_DNS_PACKET_JUST_RANDOM_JUNK_DATA")
-    _, err = conn.Write(garbage)
-    if err != nil {
-        t.Fatalf("Failed to send garbage: %v", err)
-    }
+	garbage := []byte("THIS_IS_NOT_A_DNS_PACKET_JUST_RANDOM_JUNK_DATA")
+	_, err = conn.Write(garbage)
+	if err != nil {
+		t.Fatalf("Failed to send garbage: %v", err)
+	}
 
-    resolv := resolver{server: addr}
+	resolv := resolver{server: addr}
 
-    time.Sleep(100 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
-    _, err = resolv.lookup("auth.example.org", dns.TypeA)
-    if err != nil {
-        t.Errorf("Server seems to have crashed after receiving garbage data: %v", err)
-    }
+	_, err = resolv.lookup("auth.example.org", dns.TypeA)
+	if err != nil {
+		t.Errorf("Server seems to have crashed after receiving garbage data: %v", err)
+	}
 }
-
 
 func TestRefuseRecursiveQuery(t *testing.T) {
-    addr := "127.0.0.1:15353"
-    // startTestDNS -------------
-    server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
-    // -------------
+	addr := "127.0.0.1:15353"
+	// startTestDNS -------------
+	server, _, _ := setupDNS()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
+	// -------------
 
-    msg := new(dns.Msg)
-    msg.SetQuestion(dns.Fqdn("google.com."), dns.TypeA)
-    msg.RecursionDesired = true
+	msg := new(dns.Msg)
+	msg.SetQuestion(dns.Fqdn("google.com."), dns.TypeA)
+	msg.RecursionDesired = true
 
-    in, err := dns.Exchange(msg, addr)
-    if err != nil {
-        t.Fatalf("Failed to exchange: %v", err)
-    }
+	in, err := dns.Exchange(msg, addr)
+	if err != nil {
+		t.Fatalf("Failed to exchange: %v", err)
+	}
 
-    if len(in.Answer) > 0 {
-        t.Errorf("Security Risk: Server acted as an open resolver! Got answer for google.com: %v", in.Answer)
-    }
+	if len(in.Answer) > 0 {
+		t.Errorf("Security Risk: Server acted as an open resolver! Got answer for google.com: %v", in.Answer)
+	}
 
-    if in.Rcode != dns.RcodeRefused && in.Rcode != dns.RcodeNameError {
-         t.Logf("Warning: Server did not refuse recursion explicitly (Rcode: %s). Ensure it didn't reach out to external networks.", dns.RcodeToString[in.Rcode])
-    }
+	if in.Rcode != dns.RcodeRefused && in.Rcode != dns.RcodeNameError {
+		t.Logf("Warning: Server did not refuse recursion explicitly (Rcode: %s). Ensure it didn't reach out to external networks.", dns.RcodeToString[in.Rcode])
+	}
 }
-
 
 func TestConcurrencySafe(t *testing.T) {
-    addr := "127.0.0.1:15353"
-    // startTestDNS -------------
-    server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
-    // -------------
+	addr := "127.0.0.1:15353"
+	// startTestDNS -------------
+	server, _, _ := setupDNS()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
+	// -------------
 
-    resolv := resolver{server: addr}
+	resolv := resolver{server: addr}
 
-    concurrency := 50
-    errCh := make(chan error, concurrency)
-    var wg sync.WaitGroup
+	concurrency := 50
+	errCh := make(chan error, concurrency)
+	var wg sync.WaitGroup
 
-    for i := 0; i < concurrency; i++ {
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            _, err := resolv.lookup("auth.example.org", dns.TypeA)
-            if err != nil {
-                errCh <- err
-            }
-        }()
-    }
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := resolv.lookup("auth.example.org", dns.TypeA)
+			if err != nil {
+				errCh <- err
+			}
+		}()
+	}
 
-    wg.Wait()
-    close(errCh)
+	wg.Wait()
+	close(errCh)
 
-    for err := range errCh {
-        if err != nil {
-            t.Errorf("Concurrent query failed: %v", err)
-        }
-    }
+	for err := range errCh {
+		if err != nil {
+			t.Errorf("Concurrent query failed: %v", err)
+		}
+	}
 }
 
-
 func TestLargePacketParsing(t *testing.T) {
-    addr := "127.0.0.1:15353"
-    // startTestDNS -------------
-    server, _, _ := setupDNS()
-    errChan := make(chan error, 1)
-    waitLock := sync.Mutex{}
-    waitLock.Lock()
-    server.SetNotifyStartedFunc(waitLock.Unlock)
-    go server.Start(errChan)
-    t.Cleanup(func() {
-        if ns, ok := server.(*Nameserver); ok {
-            _ = ns.Shutdown()
-        }
-    })
-    waitLock.Lock()
-    // -------------
+	addr := "127.0.0.1:15353"
+	// startTestDNS -------------
+	server, _, _ := setupDNS()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown()
+		}
+	})
+	waitLock.Lock()
+	// -------------
 
-    msg := new(dns.Msg)
-    longLabel := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890"
-    longDomain := longLabel + "." + longLabel + "." + longLabel + ".auth.example.org."
+	msg := new(dns.Msg)
+	longLabel := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890"
+	longDomain := longLabel + "." + longLabel + "." + longLabel + ".auth.example.org."
 
-    msg.SetQuestion(dns.Fqdn(longDomain), dns.TypeA)
-    msg.SetEdns0(4096, true)
+	msg.SetQuestion(dns.Fqdn(longDomain), dns.TypeA)
+	msg.SetEdns0(4096, true)
 
-    in, err := dns.Exchange(msg, addr)
-    if err != nil {
-        t.Fatalf("Exchange failed with large packet: %v", err)
-    }
+	in, err := dns.Exchange(msg, addr)
+	if err != nil {
+		t.Fatalf("Exchange failed with large packet: %v", err)
+	}
 
-    if in == nil {
-        t.Error("Got nil response for large packet")
-    }
+	if in == nil {
+		t.Error("Got nil response for large packet")
+	}
 }

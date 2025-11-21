@@ -104,9 +104,8 @@ func (n *Nameserver) SetNotifyStartedFunc(fun func()) {
 }
 
 func (n *Nameserver) Shutdown() error {
-    if n.Server != nil {
-       	return n.Server.Shutdown()
+	if n.Server != nil {
+		return n.Server.Shutdown()
 	}
-    return nil
+	return nil
 }
-
