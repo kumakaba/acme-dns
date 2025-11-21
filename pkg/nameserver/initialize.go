@@ -102,3 +102,11 @@ func (n *Nameserver) Start(errorChannel chan error) {
 func (n *Nameserver) SetNotifyStartedFunc(fun func()) {
 	n.Server.NotifyStartedFunc = fun
 }
+
+func (n *Nameserver) Shutdown() error {
+    if n.Server != nil {
+       	return n.Server.Shutdown()
+	}
+    return nil
+}
+
