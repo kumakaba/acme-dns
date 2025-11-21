@@ -392,8 +392,8 @@ use for the renewal.
 
 - Logging to a file
 - DNSSEC
-- Want to see something implemented, make a feature request!
 - DoT / DoH
+- Change API root path (though using nginx as a reverse proxy would suffice)
 
 ## Contributing
 

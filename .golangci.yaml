@@ -21,7 +21,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/acme-dns/acme-dns
+        - github.com/kumakaba/acme-dns
   exclusions:
     generated: lax
     paths:
