@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/kumakaba/acme-dns.svg?branch=master)](https://travis-ci.org/kumakaba/acme-dns) [![Coverage Status](https://coveralls.io/repos/github/kumakaba/acme-dns/badge.svg?branch=master)](https://coveralls.io/github/kumakaba/acme-dns?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/kumakaba/acme-dns)](https://goreportcard.com/report/github.com/kumakaba/acme-dns)
+[![Coverage Status](https://coveralls.io/repos/github/kumakaba/acme-dns/badge.svg?branch=master)](https://coveralls.io/github/kumakaba/acme-dns?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/kumakaba/acme-dns)](https://goreportcard.com/report/github.com/kumakaba/acme-dns)
 # acme-dns
 
 A simplified DNS server with a RESTful HTTP API to provide a simple way to automate ACME DNS challenges.
@@ -393,11 +393,12 @@ use for the renewal.
 - Logging to a file
 - DNSSEC
 - Want to see something implemented, make a feature request!
+- DoT / DoH
 
 ## Contributing
 
-acme-dns is open for contributions.
-If you have an idea for improvement, please open an new issue or feel free to write a PR!
+This repository is open , but due to time constraints, I am currently unable to review or accept new issues and pull requests.
+If you would like to add features or make changes, please feel free to fork the repository and modify it for your own needs.
 
 ## License
 
