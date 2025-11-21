@@ -1,11 +1,9 @@
 name: Go
 on:
   push:
+    branches: [ master, main ]
   pull_request:
-  schedule:
-    # Run every 12 hours, at the 15 minute mark. E.g.
-    # 2020-11-29 00:15:00 UTC, 2020-11-29 12:15:00 UTC, 2020-11-30 00:15:00 UTC
-    - cron:  '15 */12 * * *'
+
 jobs:
 
   build:
@@ -14,12 +12,12 @@ jobs:
     steps:
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
-          go-version: ^1.13
+          go-version: ^1.25
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Build
         run: go build -v ./...
@@ -28,6 +26,6 @@ jobs:
         run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
 
       - name: Upload Coverage
-        uses: shogo82148/actions-goveralls@v1
+        uses: shogo82148/actions-goveralls@v7
         with:
           path-to-profile: coverage.out
