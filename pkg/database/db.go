@@ -360,3 +360,7 @@ func (d *acmednsdb) GetBackend() *sql.DB {
 func (d *acmednsdb) SetBackend(backend *sql.DB) {
 	d.DB = backend
 }
+
+func (d *acmednsdb) GetDBVersion() int {
+	return DBVersion
+}

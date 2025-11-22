@@ -39,6 +39,14 @@ func fakeDB() acmedns.AcmednsDB {
 	return db
 }
 
+func TestGetDBVersion(t *testing.T) {
+	DB := fakeDB()
+	ver := DB.GetDBVersion()
+	if ver < 1 {
+		t.Errorf("Expect DBVersion > 0, but got [%d]", ver)
+	}
+}
+
 func TestRegisterNoCIDR(t *testing.T) {
 	// Register tests
 	DB := fakeDB()

@@ -14,10 +14,24 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	Version  = "v1.2.0"
+	Revision = "preview-20251123a"
+)
+
 func main() {
 	syscall.Umask(0077)
+	// define commandline options
 	configPtr := flag.String("c", "/etc/acme-dns/config.cfg", "config file location")
+	versionFlag := flag.Bool("version", false, "print the version")
+
 	flag.Parse()
+
+	// Return Version and exit
+	if *versionFlag {
+		fmt.Printf("kumakaba/acme-dns (%s-%s)\n", Version, Revision)
+		os.Exit(0)
+	}
 	// Read global config
 	var err error
 	var logger *zap.Logger
@@ -42,7 +56,8 @@ func main() {
 	// Error channel for servers
 	errChan := make(chan error, 1)
 	api := api.Init(&config, db, sugar, errChan)
-	dnsservers := nameserver.InitAndStart(&config, db, sugar, errChan)
+	versionStr := fmt.Sprintf("%s-%s", Version, Revision)
+	dnsservers := nameserver.InitAndStart(&config, db, sugar, errChan, versionStr)
 	go api.Start(dnsservers)
 	if err != nil {
 		sugar.Error(err)

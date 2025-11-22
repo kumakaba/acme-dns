@@ -60,6 +60,7 @@ func setupDNS() (acmedns.AcmednsNS, acmedns.AcmednsDB, *observer.ObservedLogs) {
 	server.Server = &dns.Server{Addr: config.General.Listen, Net: config.General.Proto}
 	server.ParseRecords()
 	server.OwnDomain = "auth.example.org."
+	server.version = "v0.0.0-fake-version"
 	return &server, db, logObserver
 }
 
@@ -76,6 +77,21 @@ func (r *resolver) lookup(host string, qtype uint16) (*dns.Msg, error) {
 		return in, fmt.Errorf("Received error from the server [%s]", dns.RcodeToString[in.Rcode])
 	}
 	return in, nil
+}
+
+func TestCheckVersion(t *testing.T) {
+	server, _, _ := setupDNS()
+
+	ns, ok := server.(*Nameserver)
+	if !ok {
+		t.Fatal("Could not cast interface to *Nameserver")
+	}
+
+	ver := ns.GetVersion()
+
+	if ver != "v0.0.0-fake-version" {
+		t.Errorf("Expected server version string, but got %s", ver)
+	}
 }
 
 func TestShutdownNilServer(t *testing.T) {

@@ -26,11 +26,13 @@ type Nameserver struct {
 	personalAuthKey   string
 	Domains           map[string]Records
 	errChan           chan error
+	version           string
 }
 
-func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, errChan chan error) []acmedns.AcmednsNS {
+func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, errChan chan error, versionStr string) []acmedns.AcmednsNS {
 	dnsservers := make([]acmedns.AcmednsNS, 0)
 	waitLock := sync.Mutex{}
+	logger.Infof("acme-dns %s", versionStr)
 	if strings.HasPrefix(config.General.Proto, "both") {
 
 		// Handle the case where DNS server should be started for both udp and tcp
@@ -43,10 +45,10 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 			udpProto += "6"
 			tcpProto += "6"
 		}
-		dnsServerUDP := NewDNSServer(config, db, logger, udpProto)
+		dnsServerUDP := NewDNSServer(config, db, logger, udpProto, versionStr)
 		dnsservers = append(dnsservers, dnsServerUDP)
 		dnsServerUDP.ParseRecords()
-		dnsServerTCP := NewDNSServer(config, db, logger, tcpProto)
+		dnsServerTCP := NewDNSServer(config, db, logger, tcpProto, versionStr)
 		dnsservers = append(dnsservers, dnsServerTCP)
 		dnsServerTCP.ParseRecords()
 		// wait for the server to get started to proceed
@@ -58,7 +60,7 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 		go dnsServerTCP.Start(errChan)
 		waitLock.Lock()
 	} else {
-		dnsServer := NewDNSServer(config, db, logger, config.General.Proto)
+		dnsServer := NewDNSServer(config, db, logger, config.General.Proto, versionStr)
 		dnsservers = append(dnsservers, dnsServer)
 		dnsServer.ParseRecords()
 		waitLock.Lock()
@@ -70,7 +72,7 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 }
 
 // NewDNSServer parses the DNS records from config and returns a new DNSServer struct
-func NewDNSServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, proto string) acmedns.AcmednsNS {
+func NewDNSServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, proto string, versionStr string) acmedns.AcmednsNS {
 	//		dnsServerTCP := NewDNSServer(DB, Config.General.Listen, tcpProto, Config.General.Domain)
 	server := Nameserver{Config: config, DB: db, Logger: logger}
 	server.Server = &dns.Server{Addr: config.General.Listen, Net: proto}
@@ -81,6 +83,7 @@ func NewDNSServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 	server.OwnDomain = strings.ToLower(domain)
 	server.personalAuthKey = ""
 	server.Domains = make(map[string]Records)
+	server.version = versionStr
 	return &server
 }
 
@@ -101,6 +104,10 @@ func (n *Nameserver) Start(errorChannel chan error) {
 
 func (n *Nameserver) SetNotifyStartedFunc(fun func()) {
 	n.Server.NotifyStartedFunc = fun
+}
+
+func (n *Nameserver) GetVersion() string {
+	return n.version
 }
 
 func (n *Nameserver) Shutdown() error {

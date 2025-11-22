@@ -14,6 +14,7 @@ type AcmednsDB interface {
 	GetBackend() *sql.DB
 	SetBackend(*sql.DB)
 	Close()
+	GetDBVersion() int
 }
 
 type AcmednsNS interface {
@@ -22,4 +23,5 @@ type AcmednsNS interface {
 	SetNotifyStartedFunc(func())
 	ParseRecords()
 	Shutdown() error
+	GetVersion() string
 }
