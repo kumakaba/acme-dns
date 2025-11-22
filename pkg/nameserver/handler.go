@@ -32,6 +32,20 @@ func (n *Nameserver) handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 	_ = w.WriteMsg(m)
 }
 
+func (n *Nameserver) getSOARecord() dns.RR {
+	if n.SOA == nil {
+		return nil
+	}
+	originalSOA, ok := n.SOA.(*dns.SOA)
+	if !ok {
+		return n.SOA
+	}
+	soaCopy := *originalSOA
+	soaCopy.Hdr.Ttl = 1
+	soaCopy.Minttl = 1
+	return &soaCopy
+}
+
 func (n *Nameserver) readQuery(m *dns.Msg) {
 	var authoritative = false
 	for _, que := range m.Question {
@@ -46,20 +60,35 @@ func (n *Nameserver) readQuery(m *dns.Msg) {
 	m.Authoritative = authoritative
 	if authoritative {
 		if m.Rcode == dns.RcodeNameError {
-			m.Ns = append(m.Ns, n.SOA)
+			m.Ns = append(m.Ns, n.getSOARecord())
+		}
+		if m.Rcode == dns.RcodeSuccess && len(m.Answer) == 0 {
+			m.Ns = append(m.Ns, n.getSOARecord())
 		}
 	}
 }
 
 func (n *Nameserver) answer(q dns.Question) ([]dns.RR, int, bool, error) {
-	var rcode int
+	var rcode = dns.RcodeSuccess
 	var err error
 	var txtRRs []dns.RR
 	var authoritative = n.isAuthoritative(q)
-	if !n.isOwnChallenge(q.Name) && !n.answeringForDomain(q.Name) {
-		rcode = dns.RcodeNameError
+
+	var answers []dns.RR
+
+	if !authoritative {
+		n.Logger.Debugw("Refused question for domain",
+			"qtype", dns.TypeToString[q.Qtype],
+			"domain", q.Name,
+			"rcode", dns.RcodeToString[dns.RcodeRefused])
+		return nil, dns.RcodeRefused, false, nil // REFUSED
 	}
+	if !n.isOwnChallenge(q.Name) && !n.answeringForDomain(q.Name) {
+		rcode = dns.RcodeNameError // NXDOMAIN
+	}
+
 	r, _ := n.getRecord(q)
+	answers = append(answers, r...)
 	if q.Qtype == dns.TypeTXT {
 		if n.isOwnChallenge(q.Name) {
 			txtRRs, err = n.answerOwnChallenge(q)
@@ -67,18 +96,19 @@ func (n *Nameserver) answer(q dns.Question) ([]dns.RR, int, bool, error) {
 			txtRRs, err = n.answerTXT(q)
 		}
 		if err == nil {
-			r = append(r, txtRRs...)
+			answers = append(answers, txtRRs...)
 		}
 	}
-	if len(r) > 0 {
-		// Make sure that we return NOERROR if there were dynamic records for the domain
+	if len(answers) > 0 {
 		rcode = dns.RcodeSuccess
 	}
+
 	n.Logger.Debugw("Answering question for domain",
 		"qtype", dns.TypeToString[q.Qtype],
 		"domain", q.Name,
-		"rcode", dns.RcodeToString[rcode])
-	return r, rcode, authoritative, nil
+		"rcode", dns.RcodeToString[rcode],
+		"answer_count", len(answers))
+	return answers, rcode, authoritative, nil
 }
 
 func (n *Nameserver) answerTXT(q dns.Question) ([]dns.RR, error) {

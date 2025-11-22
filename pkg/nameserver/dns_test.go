@@ -351,7 +351,21 @@ func TestAuthoritative(t *testing.T) {
 	if !answer.Authoritative {
 		t.Errorf("Was expecting authoritative bit to be set")
 	}
+	soa, _ := answer.Ns[0].(*dns.SOA)
+	if soa.Hdr.Ttl != 1 {
+		t.Errorf("Expected SOA TTL to be 1, but got %d", soa.Hdr.Ttl)
+	}
+	if soa.Minttl != 1 {
+		t.Errorf("Expected SOA Minttl to be 1, but got %d", soa.Minttl)
+	}
+	// REFUSED test
 	nanswer, _ := resolv.lookup("nonexsitent.nonauth.tld", dns.TypeA)
+	if nanswer.Rcode != dns.RcodeRefused {
+		t.Errorf("Was expecing REFUSED rcode, but got [%s] instead.", dns.RcodeToString[nanswer.Rcode])
+	}
+	if len(nanswer.Ns) > 0 {
+		t.Errorf("Was expecting non authority (SOA) for refused, but got %d", len(nanswer.Ns))
+	}
 	if len(nanswer.Answer) > 0 {
 		t.Errorf("Didn't expect answers for non authotitative domain query")
 	}
@@ -378,14 +392,11 @@ func TestResolveTXT(t *testing.T) {
 	resolv := resolver{server: "127.0.0.1:15353"}
 	validTXT := "______________valid_response_______________"
 
-	// t.Logf("LOG:server:%s",server)
-	// t.Logf("LOG:db:%s",db)
 	atxt, err := db.Register(acmedns.Cidrslice{})
 	if err != nil {
 		t.Errorf("Could not initiate db record: [%v]", err)
 		return
 	}
-	// t.Logf("LOG:atxt:%s",atxt)
 	atxt.Value = validTXT
 
 	err = db.Update(atxt.ACMETxtPost)
@@ -393,37 +404,29 @@ func TestResolveTXT(t *testing.T) {
 		t.Errorf("Could not update db record: [%v]", err)
 		return
 	}
-	// t.Logf("LOG:------------------------")
-	// t.Logf("LOG:atxt:%s",atxt)
-	// gettxtval, _ := db.GetTXTForDomain(atxt.Subdomain)
-	// t.Logf("LOG:txt:%s",gettxtval)
-	// t.Logf("LOG:db:%s",db)
-	// t.Logf("LOG:------------------------")
 
 	for i, test := range []struct {
 		subDomain   string
 		expTXT      string
 		getAnswer   bool
 		getNodata   bool
+		getSOA      bool
 		validAnswer bool
 	}{
-		{"", "", true, true, false},
-		{"ns1", "", true, true, false},
-		{"ns2", "", true, true, false},
-		{"nxdomain", "", false, false, false},
-		{atxt.Subdomain, validTXT, true, false, true},
-		{atxt.Subdomain, "invalid", true, false, false},
-		{"a097455b-52cc-4569-90c8-7a4b97c6eba8", validTXT, false, false, false},
-		{atxt.Subdomain, validTXT, true, false, true},
+		{"", "", true, true, true, false},
+		{"ns1", "", true, true, true, false},
+		{"ns2", "", true, true, true, false},
+		{"nxdomain", "", false, false, true, false},
+		{atxt.Subdomain, validTXT, true, false, false, true},
+		{atxt.Subdomain, "invalid", true, false, false, false},
+		{atxt.Subdomain, "", true, false, false, false},
+		{"invalid0-52cc-4569-90c8-7a4b97c6eba8", validTXT, false, false, true, false},
 	} {
 		targetFQDN := "auth.example.org"
 		if test.subDomain != "" {
 			targetFQDN = test.subDomain + "." + targetFQDN
 		}
 		answer, err := resolv.lookup(targetFQDN, dns.TypeTXT)
-		// answer, err := resolv.lookup(test.subDomain+".auth.example.org", dns.TypeA)
-		// t.Logf("LOG:%d:(%s)(%s) answer.Rcode:%d len:%d",i,test.subDomain,test.expTXT,answer.Rcode,len(answer.Answer))
-		// t.Logf("LOG:%d:%s",i,answer)
 		if err != nil {
 			if answer.Rcode == dns.RcodeNameError {
 				if !test.getAnswer {
@@ -469,7 +472,28 @@ func TestResolveTXT(t *testing.T) {
 				}
 			}
 		}
-		// t.Logf("LOG:%d:END",i)
+		if test.getSOA {
+			if len(answer.Ns) == 0 {
+				t.Errorf("Test %d: Expected Authority SOA, but not exists", i)
+			}
+
+			soa, ok := answer.Ns[0].(*dns.SOA)
+			if !ok {
+				t.Fatalf("Test %d: Expected Authority record to be SOA, but got %T", i, answer.Ns[0])
+			}
+
+			if soa.Hdr.Ttl != 1 {
+				t.Errorf("Test %d: Expected SOA TTL to be 1, but got %d", i, soa.Hdr.Ttl)
+			}
+
+			if soa.Minttl != 1 {
+				t.Errorf("Test %d: Expected SOA Minttl to be 1, but got %d", i, soa.Minttl)
+			}
+		} else {
+			if len(answer.Ns) > 0 {
+				t.Errorf("Test %d: Expected not Authority SOA, but exists", i)
+			}
+		}
 	}
 }
 
@@ -538,12 +562,25 @@ func TestCaseInsensitiveResolveSOA(t *testing.T) {
 	}
 
 	if len(answer.Ns) == 0 {
-		t.Error("No SOA answer for DNS query")
+		t.Fatalf("No SOA answer for DNS query")
+	}
+
+	soa, ok := answer.Ns[0].(*dns.SOA)
+	if !ok {
+		t.Fatalf("Expected Authority record to be SOA, but got %T", answer.Ns[0])
+	}
+
+	if soa.Hdr.Ttl != 1 {
+		t.Errorf("Expected SOA TTL to be 1, but got %d", soa.Hdr.Ttl)
+	}
+
+	if soa.Minttl != 1 {
+		t.Errorf("Expected SOA Minttl to be 1, but got %d", soa.Minttl)
 	}
 }
 
 //////////////////////////////////////////////////
-// ATTACK TEST
+// Vulnerability Assessment Test
 //////////////////////////////////////////////////
 
 func TestResilienceToGarbageUDP(t *testing.T) {
