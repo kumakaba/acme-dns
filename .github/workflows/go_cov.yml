@@ -1,8 +1,15 @@
 name: Go
+
 on:
   push:
     branches: [ master, main ]
   pull_request:
+
+permissions:
+  actions: read
+  contents: read
+  packages: read
+  pull-requests: write
 
 jobs:
 
