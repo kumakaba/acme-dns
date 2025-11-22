@@ -156,7 +156,7 @@ go build
 
 1) Pull the latest acme-dns Docker image: `docker pull kumakaba/acme-dns`.
 
-2) Create directories: `config` for the configuration file, and `data` for the sqlite3 database.
+2) Create directories: `config` for the configuration file, and `data` for the sqlite database.
 
 3) Copy [configuration template](https://raw.githubusercontent.com/kumakaba/acme-dns/master/config.cfg) to `config/config.cfg`.
 
@@ -253,10 +253,10 @@ records = [
 debug = false
 
 [database]
-# Database engine to use, sqlite3 or postgres
-engine = "sqlite3"
-# Connection string, filename for sqlite3 and postgres://$username:$password@$host/$db_name for postgres
-# Please note that the default Docker image uses path /var/lib/acme-dns/acme-dns.db for sqlite3
+# Database engine to use, sqlite(sqlite3) or postgres
+engine = "sqlite"
+# Connection string, filename for sqlite and postgres://$username:$password@$host/$db_name for postgres
+# Please note that the default Docker image uses path /var/lib/acme-dns/acme-dns.db for sqlite
 connection = "/var/lib/acme-dns/acme-dns.db"
 # connection = "postgres://user:password@localhost/acmedns_db"
 
