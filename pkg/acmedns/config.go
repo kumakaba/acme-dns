@@ -46,6 +46,11 @@ func prepareConfig(conf AcmeDnsConfig) (AcmeDnsConfig, error) {
 	if conf.Database.Connection == "" {
 		return conf, errors.New("missing database configuration option \"connection\"")
 	}
+	// Use sqlite if the database is not postgres
+	// Note: Some users mistakenly specify 'sqlite3', so we treat it as 'sqlite'
+	if conf.Database.Engine != "postgres" {
+		conf.Database.Engine = "sqlite"
+	}
 
 	// Default values for options added to config to keep backwards compatibility with old config
 	if conf.API.ACMECacheDir == "" {

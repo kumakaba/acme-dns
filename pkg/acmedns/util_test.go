@@ -162,7 +162,7 @@ func TestReadConfigFallback(t *testing.T) {
 			},
 		},
 		Database: dbsettings{
-			Engine:     "dinosaur",
+			Engine:     "sqlite",
 			Connection: "roar",
 		},
 		API: httpapi{
@@ -192,6 +192,73 @@ func TestReadConfigFallback(t *testing.T) {
 		t.Errorf("Did not read the config correctly: got %+v, want: %+v", cfg, expected)
 	}
 
+}
+
+func TestReadConfigFallback2(t *testing.T) {
+	var (
+		path string
+		err  error
+	)
+
+	testPath := "testdata/test_read_fallback_config2.toml"
+
+	path, err = getNonExistentPath()
+	if err != nil {
+		t.Errorf("failed getting non existant path: %s", err)
+	}
+
+	cfg, used, err := ReadConfig(path, testPath)
+	if err != nil {
+		t.Fatalf("failed to read a config file when we should have: %s", err)
+	}
+
+	if used != testPath {
+		t.Fatalf("we read from the wrong file. got: %s, want: %s", used, testPath)
+	}
+
+	expected := AcmeDnsConfig{
+		General: general{
+			Listen:  "127.0.0.1:53",
+			Proto:   "both",
+			Domain:  "test.example.org",
+			Nsname:  "test.example.org",
+			Nsadmin: "test.example.org",
+			Debug:   false,
+			StaticRecords: []string{
+				"test.example.org. A 127.0.0.1",
+				"test.example.org. NS test.example.org.",
+			},
+		},
+		Database: dbsettings{
+			Engine:     "postgres",
+			Connection: "wong",
+		},
+		API: httpapi{
+			Domain:              "",
+			IP:                  "0.0.0.0",
+			DisableRegistration: true,
+			AutocertPort:        "",
+			Port:                "443",
+			TLS:                 "none",
+			TLSCertPrivkey:      "/etc/tls/example.org/privkey.pem",
+			TLSCertFullchain:    "/etc/tls/example.org/fullchain.pem",
+			ACMECacheDir:        "api-certs",
+			NotificationEmail:   "",
+			CorsOrigins:         []string{"*"},
+			UseHeader:           false,
+			HeaderName:          "X-is-gonna-give-it-to-ya",
+		},
+		Logconfig: logconfig{
+			Level:   "info",
+			Logtype: "stdout",
+			File:    "./acme-dns.log",
+			Format:  "json",
+		},
+	}
+
+	if !reflect.DeepEqual(cfg, expected) {
+		t.Errorf("Did not read the config correctly: got %+v, want: %+v", cfg, expected)
+	}
 }
 
 func getNonExistentPath() (string, error) {
