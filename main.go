@@ -16,12 +16,13 @@ import (
 
 var (
 	Version  = "v1.2.0"
-	Revision = "preview-20251123a"
+	Revision = "preview-20251123b"
 )
 
 func main() {
 	syscall.Umask(0077)
 	// define commandline options
+	configTestFlag := flag.Bool("t", false, "check configuration")
 	configPtr := flag.String("c", "/etc/acme-dns/config.cfg", "config file location")
 	versionFlag := flag.Bool("version", false, "print the version")
 
@@ -37,12 +38,19 @@ func main() {
 	var logger *zap.Logger
 	config, usedConfigFile, err := acmedns.ReadConfig(*configPtr, "./config.cfg")
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		if *configTestFlag {
+			fmt.Printf("check configuration file: %s failed\n", usedConfigFile)
+		}
 		os.Exit(1)
+	}
+	if *configTestFlag {
+		fmt.Printf("check configuration file: %s succeeded\n", usedConfigFile)
+		os.Exit(0)
 	}
 	logger, err = acmedns.SetupLogging(config)
 	if err != nil {
-		fmt.Printf("Could not set up logging: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Could not set up logging: %s\n", err)
 		os.Exit(1)
 	}
 	// Make sure to flush the zap logger buffer before exiting

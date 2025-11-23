@@ -261,6 +261,25 @@ func TestReadConfigFallback2(t *testing.T) {
 	}
 }
 
+func TestReadConfigValidationError(t *testing.T) {
+	var (
+		path string
+		err  error
+	)
+
+	testPath := "testdata/test_read_validationerror_config.toml"
+
+	path, err = getNonExistentPath()
+	if err != nil {
+		t.Errorf("failed getting non existant path: %s", err)
+	}
+
+	_, _, err = ReadConfig(path, testPath)
+	if err == nil {
+		t.Fatalf("Expect validation error, but not error")
+	}
+}
+
 func getNonExistentPath() (string, error) {
 	path := fmt.Sprintf("/some/path/that/should/not/exist/on/any/filesystem/%10d.cfg", rand.Int())
 

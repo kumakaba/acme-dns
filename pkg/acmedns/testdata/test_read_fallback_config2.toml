@@ -3,7 +3,7 @@ listen = "127.0.0.1:53"
 protocol = "both"
 domain = "test.example.org"
 nsname = "test.example.org"
-nsadmin = "test.example.org"
+nsadmin = "test@example.org"
 records = [
     "test.example.org. A 127.0.0.1",
     "test.example.org. NS test.example.org.",
