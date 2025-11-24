@@ -1,7 +1,7 @@
 FROM golang:1.25-alpine AS builder
 LABEL maintainer="kmkb@rtclub.net"
 
-RUN apk add --update gcc musl-dev git
+RUN apk add --update gcc musl-dev git sqlite
 
 ENV GOPATH /tmp/buildcache
 RUN git clone https://github.com/kumakaba/acme-dns /tmp/acme-dns

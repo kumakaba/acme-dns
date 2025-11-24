@@ -1,4 +1,3 @@
-version: '2'
 services:
   acmedns:
     build:
@@ -12,4 +11,9 @@ services:
       - "80:80"
     volumes:
       - ./config:/etc/acme-dns:ro
-      - ./data:/var/lib/acme-dns
+      - acme-dns-data:/var/lib/acme-dns
+
+volumes:
+  acme-dns-data:
+    driver: local
+
