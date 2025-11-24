@@ -1,12 +1,16 @@
 FROM golang:1.25-alpine AS builder
 LABEL maintainer="kmkb@rtclub.net"
 
-RUN apk add --update gcc musl-dev git sqlite
+RUN apk add --update gcc musl-dev git
 
 ENV GOPATH /tmp/buildcache
-RUN git clone https://github.com/kumakaba/acme-dns /tmp/acme-dns
+#RUN git clone https://github.com/kumakaba/acme-dns /tmp/acme-dns
+COPY . /tmp/acme-dns
 WORKDIR /tmp/acme-dns
-RUN CGO_ENABLED=1 go build
+RUN CGO_ENABLED=0 go build
+
+# If you see 'unknown driver "sqlite"' error at runtime, run:
+# docker compose build --no-cache
 
 FROM alpine:latest
 
@@ -21,3 +25,4 @@ VOLUME ["/etc/acme-dns", "/var/lib/acme-dns"]
 ENTRYPOINT ["./acme-dns"]
 EXPOSE 53 80 443
 EXPOSE 53/udp
+
