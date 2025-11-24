@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,45 +20,53 @@ import (
 
 var (
 	Version  = "v1.2.0"
-	Revision = "preview-20251124c"
+	Revision = "preview-20251124d"
 )
 
 func main() {
 	syscall.Umask(0077)
-	// define commandline options
-	configTestFlag := flag.Bool("t", false, "check configuration")
-	configPtr := flag.String("c", "/etc/acme-dns/config.cfg", "config file location")
-	versionFlag := flag.Bool("version", false, "print the version")
+	os.Exit(run(os.Args, os.Stdout, os.Stderr))
+}
 
-	flag.Parse()
+func run(args []string, stdout, stderr io.Writer) int {
+	// define commandline options
+	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	configTestFlag := fs.Bool("t", false, "check configuration")
+	configPtr := fs.String("c", "/etc/acme-dns/config.cfg", "config file location")
+	versionFlag := fs.Bool("version", false, "print the version")
+
+	if err := fs.Parse(args[1:]); err != nil {
+		return 1
+	}
 
 	// Return Version and exit
 	if *versionFlag {
-		fmt.Printf("kumakaba/acme-dns (%s-%s)\n", Version, Revision)
-		os.Exit(0)
+		fmt.Fprintf(stdout, "kumakaba/acme-dns (%s-%s)\n", Version, Revision)
+		return 0
 	}
 	// Read global config
 	var err error
 	var logger *zap.Logger
 	config, usedConfigFile, err := acmedns.ReadConfig(*configPtr, "./config.cfg")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		fmt.Fprintf(stderr, "Error: %s\n", err)
 		if *configTestFlag {
-			fmt.Printf("check configuration file: %s failed\n", usedConfigFile)
+			fmt.Fprintf(stdout, "check configuration file: %s failed\n", usedConfigFile)
 		}
-		os.Exit(1)
+		return 1
 	}
 	if *configTestFlag {
-		fmt.Printf("check configuration file: %s succeeded\n", usedConfigFile)
-		os.Exit(0)
+		fmt.Fprintf(stdout, "check configuration file: %s succeeded\n", usedConfigFile)
+		return 0
 	}
 	logger, err = acmedns.SetupLogging(config)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not set up logging: %s\n", err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "Could not set up logging: %s\n", err)
+		return 1
 	}
 	// Make sure to flush the zap logger buffer before exiting
-	defer logger.Sync() //nolint:all
+	defer func() { _ = logger.Sync() }()
 	sugar := logger.Sugar()
 
 	versionStr := fmt.Sprintf("%s-%s", Version, Revision)
@@ -68,8 +77,10 @@ func main() {
 	// Initialize DB
 	db, err := database.Init(&config, sugar)
 	if err != nil {
-		sugar.Fatalf("Failed to initialize database: %v", err)
+		sugar.Errorf("Failed to initialize database: %v", err)
+		return 1
 	}
+	defer db.Close()
 
 	// Error channel for servers
 	errChan := make(chan error, 1)
@@ -86,7 +97,8 @@ func main() {
 	select {
 	case err := <-errChan:
 		if err != nil {
-			sugar.Fatal(err)
+			sugar.Error(err)
+			return 1
 		}
 	case sig := <-sigChan:
 		// graceful shutdown process
@@ -107,14 +119,14 @@ func main() {
 		}
 		sugar.Info("All DNS servers shutdown successfully")
 
-		db.Close()
 		sugar.Info("acme-dns shutdown complete, bye.")
-		return
+		return 0
 	}
 	for {
 		err = <-errChan
 		if err != nil {
-			sugar.Fatal(err)
+			sugar.Error(err)
+			return 1
 		}
 	}
 }

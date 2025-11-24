@@ -78,9 +78,13 @@ func ReadConfig(configFile, fallback string) (AcmeDnsConfig, string, error) {
 	var usedConfigFile string
 	var config AcmeDnsConfig
 	var err error
-	if FileIsAccessible(configFile) {
+	if configFile != "" {
 		usedConfigFile = configFile
-		config, err = readTomlConfig(configFile)
+		if FileIsAccessible(configFile) {
+			config, err = readTomlConfig(configFile)
+		} else {
+			err = fmt.Errorf("configuration file not found")
+		}
 	} else if FileIsAccessible(fallback) {
 		usedConfigFile = fallback
 		config, err = readTomlConfig(fallback)
@@ -89,6 +93,7 @@ func ReadConfig(configFile, fallback string) (AcmeDnsConfig, string, error) {
 	}
 	if err != nil {
 		err = fmt.Errorf("encountered an error while trying to read configuration file:  %w", err)
+		return config, usedConfigFile, err
 	}
 
 	// Validation

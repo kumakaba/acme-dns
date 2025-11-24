@@ -126,7 +126,7 @@ func TestReadConfig(t *testing.T) {
 	}
 }
 
-func TestReadConfigFallback(t *testing.T) {
+func TestReadConfigNotFallbackAtEmptyPath(t *testing.T) {
 	var (
 		path string
 		err  error
@@ -139,7 +139,23 @@ func TestReadConfigFallback(t *testing.T) {
 		t.Errorf("failed getting non existant path: %s", err)
 	}
 
-	cfg, used, err := ReadConfig(path, testPath)
+	// Does not fallback if filepath is specified
+	_, _, err = ReadConfig(path, testPath)
+	if err == nil {
+		t.Fatalf("Expect error configuration file not found, but noerror")
+	}
+
+}
+
+func TestReadConfigFallback(t *testing.T) {
+	var (
+		err error
+	)
+
+	testPath := "testdata/test_read_fallback_config.toml"
+
+	// fallback if filepath is empty
+	cfg, used, err := ReadConfig("", testPath)
 	if err != nil {
 		t.Fatalf("failed to read a config file when we should have: %s", err)
 	}
@@ -196,18 +212,13 @@ func TestReadConfigFallback(t *testing.T) {
 
 func TestReadConfigFallback2(t *testing.T) {
 	var (
-		path string
-		err  error
+		err error
 	)
 
 	testPath := "testdata/test_read_fallback_config2.toml"
 
-	path, err = getNonExistentPath()
-	if err != nil {
-		t.Errorf("failed getting non existant path: %s", err)
-	}
-
-	cfg, used, err := ReadConfig(path, testPath)
+	// fallback if filepath is empty
+	cfg, used, err := ReadConfig("", testPath)
 	if err != nil {
 		t.Fatalf("failed to read a config file when we should have: %s", err)
 	}
