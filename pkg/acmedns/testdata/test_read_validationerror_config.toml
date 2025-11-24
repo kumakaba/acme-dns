@@ -3,6 +3,8 @@ protocol = "none"
 nsadmin = "replace_at_to_dot@hoge.example.com"
 
 [database]
+engine = "naisql"
+connection = "naisql"
 
 [api]
 

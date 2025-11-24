@@ -89,6 +89,7 @@ func ReadConfig(configFile, fallback string) (AcmeDnsConfig, string, error) {
 		usedConfigFile = fallback
 		config, err = readTomlConfig(fallback)
 	} else {
+		usedConfigFile = fallback
 		err = fmt.Errorf("configuration file not found")
 	}
 	if err != nil {

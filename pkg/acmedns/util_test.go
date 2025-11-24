@@ -5,6 +5,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"reflect"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -274,20 +275,43 @@ func TestReadConfigFallback2(t *testing.T) {
 
 func TestReadConfigValidationError(t *testing.T) {
 	var (
-		path string
-		err  error
+		err error
 	)
 
 	testPath := "testdata/test_read_validationerror_config.toml"
 
-	path, err = getNonExistentPath()
-	if err != nil {
-		t.Errorf("failed getting non existant path: %s", err)
-	}
-
-	_, _, err = ReadConfig(path, testPath)
+	cfg, used, err := ReadConfig("", testPath)
 	if err == nil {
-		t.Fatalf("Expect validation error, but not error")
+		t.Fatal("Expect validation error, but not error")
+	}
+	// check prepareConfig error
+	if !strings.Contains(err.Error(), "encountered an error while trying to read") {
+		t.Errorf("Expected validation message, got: %s", err)
+	}
+	if used != testPath {
+		t.Errorf("Expect use testPath, but %v", used)
+	}
+	if cfg.General.Nsadmin != "replace_at_to_dot.hoge.example.com" {
+		t.Errorf("Expect replaced nsadmin strings, but %s", cfg.General.Nsadmin)
+	}
+}
+
+func TestReadConfigValidationErrorOfValidator(t *testing.T) {
+	var (
+		err error
+	)
+
+	testPath := "testdata/test_read_validationerror_config2.toml"
+
+	_, used, err := ReadConfig("", testPath)
+	if err == nil {
+		t.Fatal("Expect validation error, but not error")
+	}
+	if !strings.Contains(err.Error(), "validation") {
+		t.Errorf("Expected validation message, got: %s", err)
+	}
+	if used != testPath {
+		t.Errorf("Expect use testPath, but %v", used)
 	}
 }
 
@@ -319,9 +343,29 @@ func TestReadConfigFallbackError(t *testing.T) {
 		t.Fatalf("did not create exactly 2 bad paths")
 	}
 
-	_, _, err := ReadConfig(badPaths[0], badPaths[1])
+	// Extract configuration file not found (badPaths[0] not empty)
+	_, used, err := ReadConfig(badPaths[0], badPaths[1])
 	if err == nil {
-		t.Errorf("Should have failed reading non existant file: %s", err)
+		t.Fatalf("Should have error reading non existant file: %s", err)
+	}
+	if !strings.Contains(err.Error(), "configuration file not found") {
+		t.Errorf("Expected not found message, got: %s", err)
+	}
+	if used != badPaths[0] {
+		t.Errorf("Should have same usedconfig reading non existant file: %s", used)
+	}
+
+	// Extract configuration file not found (badPaths[0] empty)
+	_, used, err = ReadConfig("", badPaths[1])
+	if err == nil {
+		t.Fatalf("Should have error reading non existant file: %s", err)
+	}
+	// t.Errorf("[%+v]",  err)
+	if !strings.Contains(err.Error(), "configuration file not found") {
+		t.Errorf("Expected not found message, got: %s", err)
+	}
+	if used != badPaths[1] {
+		t.Errorf("Should have same usedconfig reading non existant file: %s", used)
 	}
 }
 
