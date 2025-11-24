@@ -50,7 +50,7 @@ func (a *AcmednsAPI) webRegisterPost(w http.ResponseWriter, r *http.Request, _ h
 	}
 
 	// Create new user
-	nu, err := a.DB.Register(aTXT.AllowFrom)
+	nu, err := a.DB.Register(r.Context(), aTXT.AllowFrom)
 	if err != nil {
 		errstr := fmt.Sprintf("%v", err)
 		reg = jsonError(errstr)

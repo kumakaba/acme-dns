@@ -1,5 +1,10 @@
 version: "2"
 linters:
+  enable:
+    - bodyclose
+    - rowserrcheck
+    - sqlclosecheck
+    - noctx
   exclusions:
     generated: lax
     presets:

@@ -1,6 +1,7 @@
 package nameserver
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
@@ -157,7 +158,7 @@ func TestQuestionDBError(t *testing.T) {
 	defer db.SetBackend(oldDb)
 
 	q := dns.Question{Name: dns.Fqdn("whatever.tld"), Qtype: dns.TypeTXT, Qclass: dns.ClassINET}
-	_, err = server.answerTXT(q)
+	_, err = server.answerTXT(t.Context(), q)
 	if err == nil {
 		t.Errorf("Expected error but got none")
 	}
@@ -408,14 +409,14 @@ func TestResolveTXT(t *testing.T) {
 	resolv := resolver{server: "127.0.0.1:15353"}
 	validTXT := "______________valid_response_______________"
 
-	atxt, err := db.Register(acmedns.Cidrslice{})
+	atxt, err := db.Register(t.Context(), acmedns.Cidrslice{})
 	if err != nil {
 		t.Errorf("Could not initiate db record: [%v]", err)
 		return
 	}
 	atxt.Value = validTXT
 
-	err = db.Update(atxt.ACMETxtPost)
+	err = db.Update(t.Context(), atxt.ACMETxtPost)
 	if err != nil {
 		t.Errorf("Could not update db record: [%v]", err)
 		return
@@ -616,7 +617,8 @@ func TestResilienceToGarbageUDP(t *testing.T) {
 	waitLock.Lock()
 	// -------------
 
-	conn, err := net.Dial("udp", addr)
+	var d net.Dialer
+	conn, err := d.DialContext(context.Background(), "udp", addr)
 	if err != nil {
 		t.Fatalf("Could not connect to server: %v", err)
 	}

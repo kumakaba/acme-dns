@@ -1,13 +1,18 @@
 package nameserver
 
 import (
+	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/miekg/dns"
 )
 
 func (n *Nameserver) handleRequest(w dns.ResponseWriter, r *dns.Msg) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	m := new(dns.Msg)
 	m.SetReply(r)
 	// handle edns0
@@ -21,12 +26,12 @@ func (n *Nameserver) handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 			// We can safely do this as we know that we're not setting other OPT RRs within acme-dns.
 			m.SetEdns0(512, false)
 			if r.Opcode == dns.OpcodeQuery {
-				n.readQuery(m)
+				n.readQuery(ctx, m)
 			}
 		}
 	} else {
 		if r.Opcode == dns.OpcodeQuery {
-			n.readQuery(m)
+			n.readQuery(ctx, m)
 		}
 	}
 	_ = w.WriteMsg(m)
@@ -46,10 +51,10 @@ func (n *Nameserver) getSOARecord() dns.RR {
 	return &soaCopy
 }
 
-func (n *Nameserver) readQuery(m *dns.Msg) {
+func (n *Nameserver) readQuery(ctx context.Context, m *dns.Msg) {
 	var authoritative = false
 	for _, que := range m.Question {
-		if rr, rc, auth, err := n.answer(que); err == nil {
+		if rr, rc, auth, err := n.answer(ctx, que); err == nil {
 			if auth {
 				authoritative = auth
 			}
@@ -68,7 +73,7 @@ func (n *Nameserver) readQuery(m *dns.Msg) {
 	}
 }
 
-func (n *Nameserver) answer(q dns.Question) ([]dns.RR, int, bool, error) {
+func (n *Nameserver) answer(ctx context.Context, q dns.Question) ([]dns.RR, int, bool, error) {
 	var rcode = dns.RcodeSuccess
 	var err error
 	var txtRRs []dns.RR
@@ -93,7 +98,7 @@ func (n *Nameserver) answer(q dns.Question) ([]dns.RR, int, bool, error) {
 		if n.isOwnChallenge(q.Name) {
 			txtRRs, err = n.answerOwnChallenge(q)
 		} else {
-			txtRRs, err = n.answerTXT(q)
+			txtRRs, err = n.answerTXT(ctx, q)
 		}
 		if err == nil {
 			answers = append(answers, txtRRs...)
@@ -111,10 +116,10 @@ func (n *Nameserver) answer(q dns.Question) ([]dns.RR, int, bool, error) {
 	return answers, rcode, authoritative, nil
 }
 
-func (n *Nameserver) answerTXT(q dns.Question) ([]dns.RR, error) {
+func (n *Nameserver) answerTXT(ctx context.Context, q dns.Question) ([]dns.RR, error) {
 	var ra []dns.RR
 	subdomain := sanitizeDomainQuestion(q.Name)
-	atxt, err := n.DB.GetTXTForDomain(subdomain)
+	atxt, err := n.DB.GetTXTForDomain(ctx, subdomain)
 	if err != nil {
 		n.Logger.Errorw("Error while trying to get record",
 			"error", err.Error())

@@ -17,7 +17,7 @@ import (
 
 var (
 	Version  = "v1.2.0"
-	Revision = "preview-20251124a"
+	Revision = "preview-20251124b"
 )
 
 func main() {

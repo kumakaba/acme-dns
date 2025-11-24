@@ -35,7 +35,7 @@ func (a *AcmednsAPI) webUpdatePost(w http.ResponseWriter, r *http.Request, _ htt
 		updStatus = http.StatusBadRequest
 		upd = jsonError("bad_txt")
 	} else if validSubdomain(atxt.Subdomain) && validTXT(atxt.Value) {
-		err := a.DB.Update(atxt.ACMETxtPost)
+		err := a.DB.Update(r.Context(), atxt.ACMETxtPost)
 		if err != nil {
 			a.Logger.Errorw("Error while trying to update record",
 				"error", err.Error())

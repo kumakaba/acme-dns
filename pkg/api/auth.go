@@ -70,7 +70,7 @@ func (a *AcmednsAPI) getUserFromRequest(r *http.Request) (acmedns.ACMETxt, error
 		return acmedns.ACMETxt{}, fmt.Errorf("invalid username: %s: %s", uname, err.Error())
 	}
 	if validKey(passwd) {
-		dbuser, err := a.DB.GetByUsername(username)
+		dbuser, err := a.DB.GetByUsername(r.Context(), username)
 		if err != nil {
 			a.Logger.Errorw("Error while trying to get user",
 				"error", err.Error())

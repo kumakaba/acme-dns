@@ -1,12 +1,14 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"testing"
 
 	"github.com/erikstmartin/go-testdb"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/kumakaba/acme-dns/pkg/acmedns"
@@ -47,10 +49,45 @@ func TestGetDBVersion(t *testing.T) {
 	}
 }
 
+func TestDBClose(t *testing.T) {
+	DB := fakeDB()
+	DB.Close()
+}
+
+func TestDBOpenError1(t *testing.T) {
+	conf, logger := fakeConfigAndLogger()
+	conf.Database.Engine = "-nothing-engine-"
+	conf.Database.Connection = "hogehoge"
+	_, err := Init(&conf, logger)
+	if err == nil {
+		t.Errorf("Expect error, but non error")
+	}
+}
+
+func TestDBOpenError2(t *testing.T) {
+	conf, logger := fakeConfigAndLogger()
+	conf.Database.Engine = "sqlite"
+	conf.Database.Connection = ""
+	_, err := Init(&conf, logger)
+	if err == nil {
+		t.Errorf("Expect error, but non error")
+	}
+}
+
+func TestDBOpenError3(t *testing.T) {
+	conf, logger := fakeConfigAndLogger()
+	conf.Database.Engine = "postgres"
+	conf.Database.Connection = ""
+	_, err := Init(&conf, logger)
+	if err == nil {
+		t.Errorf("Expect error, but non error")
+	}
+}
+
 func TestRegisterNoCIDR(t *testing.T) {
 	// Register tests
 	DB := fakeDB()
-	_, err := DB.Register(acmedns.Cidrslice{})
+	_, err := DB.Register(context.Background(), acmedns.Cidrslice{})
 	if err != nil {
 		t.Errorf("Registration failed, got error [%v]", err)
 	}
@@ -66,11 +103,11 @@ func TestRegisterMany(t *testing.T) {
 		{acmedns.Cidrslice{"1.1.1./32", "1922.168.42.42/8", "1.1.1.1/33", "1.2.3.4/"}, acmedns.Cidrslice{}},
 		{acmedns.Cidrslice{"7.6.5.4/32", "invalid", "1.0.0.1/2"}, acmedns.Cidrslice{"7.6.5.4/32", "1.0.0.1/2"}},
 	} {
-		user, err := DB.Register(test.input)
+		user, err := DB.Register(context.Background(), test.input)
 		if err != nil {
 			t.Errorf("Test %d: Got error from register method: [%v]", i, err)
 		}
-		res, err := DB.GetByUsername(user.Username)
+		res, err := DB.GetByUsername(context.Background(), user.Username)
 		if err != nil {
 			t.Errorf("Test %d: Got error when fetching username: [%v]", i, err)
 		}
@@ -87,12 +124,12 @@ func TestRegisterMany(t *testing.T) {
 func TestGetByUsername(t *testing.T) {
 	DB := fakeDB()
 	// Create  reg to refer to
-	reg, err := DB.Register(acmedns.Cidrslice{})
+	reg, err := DB.Register(context.Background(), acmedns.Cidrslice{})
 	if err != nil {
 		t.Errorf("Registration failed, got error [%v]", err)
 	}
 
-	regUser, err := DB.GetByUsername(reg.Username)
+	regUser, err := DB.GetByUsername(context.Background(), reg.Username)
 	if err != nil {
 		t.Errorf("Could not get test user, got error [%v]", err)
 	}
@@ -109,11 +146,16 @@ func TestGetByUsername(t *testing.T) {
 	if !acmedns.CorrectPassword(reg.Password, regUser.Password) {
 		t.Errorf("The password [%s] does not match the hash [%s]", reg.Password, regUser.Password)
 	}
+
+	regUser, err = DB.GetByUsername(context.Background(), uuid.New())
+	if err == nil {
+		t.Errorf("Expect no user error, but got noerr")
+	}
 }
 
 func TestPrepareErrors(t *testing.T) {
 	DB := fakeDB()
-	reg, _ := DB.Register(acmedns.Cidrslice{})
+	reg, _ := DB.Register(context.Background(), acmedns.Cidrslice{})
 	tdb, err := sql.Open("testdb", "")
 	if err != nil {
 		t.Errorf("Got error: %v", err)
@@ -123,12 +165,12 @@ func TestPrepareErrors(t *testing.T) {
 	defer DB.SetBackend(oldDb)
 	defer testdb.Reset()
 
-	_, err = DB.GetByUsername(reg.Username)
+	_, err = DB.GetByUsername(t.Context(), reg.Username)
 	if err == nil {
 		t.Errorf("Expected error, but didn't get one")
 	}
 
-	_, err = DB.GetTXTForDomain(reg.Subdomain)
+	_, err = DB.GetTXTForDomain(t.Context(), reg.Subdomain)
 	if err == nil {
 		t.Errorf("Expected error, but didn't get one")
 	}
@@ -136,7 +178,7 @@ func TestPrepareErrors(t *testing.T) {
 
 func TestQueryExecErrors(t *testing.T) {
 	DB := fakeDB()
-	reg, _ := DB.Register(acmedns.Cidrslice{})
+	reg, _ := DB.Register(context.Background(), acmedns.Cidrslice{})
 	testdb.SetExecWithArgsFunc(func(query string, args []driver.Value) (result driver.Result, err error) {
 		return testResult{1, 0}, errors.New("Prepared query error")
 	})
@@ -157,22 +199,22 @@ func TestQueryExecErrors(t *testing.T) {
 	DB.SetBackend(tdb)
 	defer DB.SetBackend(oldDb)
 
-	_, err = DB.GetByUsername(reg.Username)
+	_, err = DB.GetByUsername(t.Context(), reg.Username)
 	if err == nil {
 		t.Errorf("Expected error from exec, but got none")
 	}
 
-	_, err = DB.GetTXTForDomain(reg.Subdomain)
+	_, err = DB.GetTXTForDomain(t.Context(), reg.Subdomain)
 	if err == nil {
 		t.Errorf("Expected error from exec in GetByDomain, but got none")
 	}
 
-	_, err = DB.Register(acmedns.Cidrslice{})
+	_, err = DB.Register(t.Context(), acmedns.Cidrslice{})
 	if err == nil {
 		t.Errorf("Expected error from exec in Register, but got none")
 	}
 	reg.Value = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-	err = DB.Update(reg.ACMETxtPost)
+	err = DB.Update(t.Context(), reg.ACMETxtPost)
 	if err == nil {
 		t.Errorf("Expected error from exec in Update, but got none")
 	}
@@ -181,7 +223,7 @@ func TestQueryExecErrors(t *testing.T) {
 
 func TestQueryScanErrors(t *testing.T) {
 	DB := fakeDB()
-	reg, _ := DB.Register(acmedns.Cidrslice{})
+	reg, _ := DB.Register(context.Background(), acmedns.Cidrslice{})
 
 	testdb.SetExecWithArgsFunc(func(query string, args []driver.Value) (result driver.Result, err error) {
 		return testResult{1, 0}, errors.New("Prepared query error")
@@ -203,7 +245,7 @@ func TestQueryScanErrors(t *testing.T) {
 	DB.SetBackend(tdb)
 	defer DB.SetBackend(oldDb)
 
-	_, err = DB.GetByUsername(reg.Username)
+	_, err = DB.GetByUsername(t.Context(), reg.Username)
 	if err == nil {
 		t.Errorf("Expected error from scan in, but got none")
 	}
@@ -211,7 +253,7 @@ func TestQueryScanErrors(t *testing.T) {
 
 func TestBadDBValues(t *testing.T) {
 	DB := fakeDB()
-	reg, _ := DB.Register(acmedns.Cidrslice{})
+	reg, _ := DB.Register(context.Background(), acmedns.Cidrslice{})
 
 	testdb.SetQueryWithArgsFunc(func(query string, args []driver.Value) (result driver.Rows, err error) {
 		columns := []string{"Username", "Password", "Subdomain", "Value", "LastActive"}
@@ -229,12 +271,12 @@ func TestBadDBValues(t *testing.T) {
 	DB.SetBackend(tdb)
 	defer DB.SetBackend(oldDb)
 
-	_, err = DB.GetByUsername(reg.Username)
+	_, err = DB.GetByUsername(t.Context(), reg.Username)
 	if err == nil {
 		t.Errorf("Expected error from scan in, but got none")
 	}
 
-	_, err = DB.GetTXTForDomain(reg.Subdomain)
+	_, err = DB.GetTXTForDomain(t.Context(), reg.Subdomain)
 	if err == nil {
 		t.Errorf("Expected error from scan in GetByDomain, but got none")
 	}
@@ -243,7 +285,7 @@ func TestBadDBValues(t *testing.T) {
 func TestGetTXTForDomain(t *testing.T) {
 	DB := fakeDB()
 	// Create  reg to refer to
-	reg, err := DB.Register(acmedns.Cidrslice{})
+	reg, err := DB.Register(context.Background(), acmedns.Cidrslice{})
 	if err != nil {
 		t.Errorf("Registration failed, got error [%v]", err)
 	}
@@ -252,12 +294,12 @@ func TestGetTXTForDomain(t *testing.T) {
 	txtval2 := "___validation_token_received_YEAH_the_ca___"
 
 	reg.Value = txtval1
-	_ = DB.Update(reg.ACMETxtPost)
+	_ = DB.Update(t.Context(), reg.ACMETxtPost)
 
 	reg.Value = txtval2
-	_ = DB.Update(reg.ACMETxtPost)
+	_ = DB.Update(t.Context(), reg.ACMETxtPost)
 
-	regDomainSlice, err := DB.GetTXTForDomain(reg.Subdomain)
+	regDomainSlice, err := DB.GetTXTForDomain(t.Context(), reg.Subdomain)
 	if err != nil {
 		t.Errorf("Could not get test user, got error [%v]", err)
 	}
@@ -283,7 +325,7 @@ func TestGetTXTForDomain(t *testing.T) {
 	}
 
 	// Not found
-	regNotfound, _ := DB.GetTXTForDomain("does-not-exist")
+	regNotfound, _ := DB.GetTXTForDomain(t.Context(), "does-not-exist")
 	if len(regNotfound) > 0 {
 		t.Errorf("No records should be returned.")
 	}
@@ -292,12 +334,12 @@ func TestGetTXTForDomain(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	DB := fakeDB()
 	// Create  reg to refer to
-	reg, err := DB.Register(acmedns.Cidrslice{})
+	reg, err := DB.Register(context.Background(), acmedns.Cidrslice{})
 	if err != nil {
 		t.Errorf("Registration failed, got error [%v]", err)
 	}
 
-	regUser, err := DB.GetByUsername(reg.Username)
+	regUser, err := DB.GetByUsername(t.Context(), reg.Username)
 	if err != nil {
 		t.Errorf("Could not get test user, got error [%v]", err)
 	}
@@ -309,8 +351,44 @@ func TestUpdate(t *testing.T) {
 	regUser.Password = "nevergonnagiveyouup"
 	regUser.Value = validTXT
 
-	err = DB.Update(regUser.ACMETxtPost)
+	err = DB.Update(t.Context(), regUser.ACMETxtPost)
 	if err != nil {
 		t.Errorf("DB Update failed, got error: [%v]", err)
+	}
+}
+
+func TestPrivateCheckDBUpgrade(t *testing.T) {
+	DB := fakeDB()
+	d, ok := DB.(*acmednsdb)
+	if !ok {
+		t.Fatal("Could not cast interface to *acmednsdb")
+	}
+	err := d.checkDBUpgrades("strings")
+	if err == nil {
+		t.Errorf("Expect error, but non error")
+	}
+	err = d.checkDBUpgrades("999999999")
+	if err != nil {
+		t.Errorf("Expect nil, but got error [%v]", err)
+	}
+	err = d.checkDBUpgrades("1")
+	if err != nil {
+		t.Errorf("Expect nil, but got error [%v]", err)
+	}
+	err = d.checkDBUpgrades("0")
+	if err != nil {
+		t.Errorf("Expect nil, but got error [%v]", err)
+	}
+}
+
+func TestProvateHandleDBUpgradeTo1(t *testing.T) {
+	DB := fakeDB()
+	d, ok := DB.(*acmednsdb)
+	if !ok {
+		t.Fatal("Could not cast interface to *acmednsdb")
+	}
+	err := d.handleDBUpgradeTo1()
+	if err != nil {
+		t.Errorf("Expect nil, but got error [%v]", err)
 	}
 }
