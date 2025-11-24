@@ -32,7 +32,6 @@ type Nameserver struct {
 func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, errChan chan error, versionStr string) []acmedns.AcmednsNS {
 	dnsservers := make([]acmedns.AcmednsNS, 0)
 	waitLock := sync.Mutex{}
-	logger.Infof("acme-dns %s", versionStr)
 	if strings.HasPrefix(config.General.Proto, "both") {
 
 		// Handle the case where DNS server should be started for both udp and tcp
@@ -111,8 +110,9 @@ func (n *Nameserver) GetVersion() string {
 }
 
 func (n *Nameserver) Shutdown() error {
-	if n.Server != nil {
-		return n.Server.Shutdown()
+	if n.Server == nil {
+		return nil
 	}
-	return nil
+
+	return n.Server.Shutdown()
 }

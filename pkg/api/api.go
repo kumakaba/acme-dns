@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"net/http"
+	"time"
 
 	"github.com/kumakaba/acme-dns/pkg/acmedns"
 
@@ -18,6 +19,7 @@ type AcmednsAPI struct {
 	DB      acmedns.AcmednsDB
 	Logger  *zap.SugaredLogger
 	errChan chan error
+	server  *http.Server
 }
 
 func Init(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, errChan chan error) AcmednsAPI {
@@ -57,6 +59,8 @@ func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
 		MinVersion: tls.VersionTLS12,
 	}
 
+	handler := c.Handler(api)
+
 	switch a.Config.API.TLS {
 	case acmedns.ApiTlsProviderLetsEncrypt, acmedns.ApiTlsProviderLetsEncryptStaging:
 		magic := a.setupTLS(dnsservers)
@@ -66,33 +70,38 @@ func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
 			return
 		}
 		cfg.GetCertificate = magic.GetCertificate
-		srv := &http.Server{
+		a.server = &http.Server{
 			Addr:      host,
-			Handler:   c.Handler(api),
+			Handler:   handler,
 			TLSConfig: cfg,
 			ErrorLog:  stderrorlog,
 		}
 		a.Logger.Infow("Listening HTTPS",
 			"host", host,
 			"domain", a.Config.General.Domain)
-		err = srv.ListenAndServeTLS("", "")
+		err = a.server.ListenAndServeTLS("", "")
 	case acmedns.ApiTlsProviderCert:
-		srv := &http.Server{
+		a.server = &http.Server{
 			Addr:      host,
-			Handler:   c.Handler(api),
+			Handler:   handler,
 			TLSConfig: cfg,
 			ErrorLog:  stderrorlog,
 		}
 		a.Logger.Infow("Listening HTTPS",
 			"host", host,
 			"domain", a.Config.General.Domain)
-		err = srv.ListenAndServeTLS(a.Config.API.TLSCertFullchain, a.Config.API.TLSCertPrivkey)
+		err = a.server.ListenAndServeTLS(a.Config.API.TLSCertFullchain, a.Config.API.TLSCertPrivkey)
 	default:
+		a.server = &http.Server{
+			Addr:     host,
+			Handler:  handler,
+			ErrorLog: stderrorlog,
+		}
 		a.Logger.Infow("Listening HTTP",
 			"host", host)
-		err = http.ListenAndServe(host, c.Handler(api))
+		err = a.server.ListenAndServe()
 	}
-	if err != nil {
+	if err != nil && err != http.ErrServerClosed {
 		a.errChan <- err
 	}
 }
@@ -125,4 +134,15 @@ func (a *AcmednsAPI) setupTLS(dnsservers []acmedns.AcmednsNS) *certmagic.Config 
 	})
 	magic := certmagic.New(magicCache, magicConf)
 	return magic
+}
+
+func (a *AcmednsAPI) Shutdown() error {
+	if a.server == nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	return a.server.Shutdown(ctx)
 }

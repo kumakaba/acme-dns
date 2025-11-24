@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"syscall"
 
 	"github.com/kumakaba/acme-dns/pkg/acmedns"
@@ -16,7 +17,7 @@ import (
 
 var (
 	Version  = "v1.2.0"
-	Revision = "preview-20251123b"
+	Revision = "preview-20251124a"
 )
 
 func main() {
@@ -57,18 +58,52 @@ func main() {
 	defer logger.Sync() //nolint:all
 	sugar := logger.Sugar()
 
+	versionStr := fmt.Sprintf("%s-%s", Version, Revision)
 	sugar.Infow("Using config file",
 		"file", usedConfigFile)
-	sugar.Info("Starting up")
+	sugar.Infof("Starting up acme-dns %s", versionStr)
+
+	// Initialize DB
 	db, err := database.Init(&config, sugar)
+	if err != nil {
+		sugar.Fatalf("Failed to initialize database: %v", err)
+	}
+
 	// Error channel for servers
 	errChan := make(chan error, 1)
-	api := api.Init(&config, db, sugar, errChan)
-	versionStr := fmt.Sprintf("%s-%s", Version, Revision)
+
+	// Signal channel for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
+	// Initialize API and DNS servers
+	apiserver := api.Init(&config, db, sugar, errChan)
 	dnsservers := nameserver.InitAndStart(&config, db, sugar, errChan, versionStr)
-	go api.Start(dnsservers)
-	if err != nil {
-		sugar.Error(err)
+	go apiserver.Start(dnsservers)
+
+	select {
+	case err := <-errChan:
+		if err != nil {
+			sugar.Fatal(err)
+		}
+	case sig := <-sigChan:
+		// graceful shutdown process
+		sugar.Infow("Signal received, shutting down...", "signal", sig)
+		if err := apiserver.Shutdown(); err != nil {
+			sugar.Errorf("Failed to shutdown API server: %v", err)
+		} else {
+			sugar.Info("API server shutdown successfully")
+		}
+		for _, srv := range dnsservers {
+			if err := srv.Shutdown(); err != nil {
+				sugar.Errorf("Failed to shutdown a DNS server: %v", err)
+			}
+		}
+		sugar.Info("All DNS servers shutdown successfully")
+
+		db.Close()
+		sugar.Info("acme-dns shutdown complete, bye.")
+		return
 	}
 	for {
 		err = <-errChan
