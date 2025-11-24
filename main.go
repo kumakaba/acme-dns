@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/kumakaba/acme-dns/pkg/acmedns"
 	"github.com/kumakaba/acme-dns/pkg/api"
@@ -89,13 +91,17 @@ func main() {
 	case sig := <-sigChan:
 		// graceful shutdown process
 		sugar.Infow("Signal received, shutting down...", "signal", sig)
-		if err := apiserver.Shutdown(); err != nil {
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := apiserver.Shutdown(ctx); err != nil {
 			sugar.Errorf("Failed to shutdown API server: %v", err)
 		} else {
 			sugar.Info("API server shutdown successfully")
 		}
 		for _, srv := range dnsservers {
-			if err := srv.Shutdown(); err != nil {
+			if err := srv.Shutdown(ctx); err != nil {
 				sugar.Errorf("Failed to shutdown a DNS server: %v", err)
 			}
 		}

@@ -534,7 +534,7 @@ func TestSetupTLS(t *testing.T) {
 
 func TestShutdown(t *testing.T) {
 	_, svr, _ := setupRouter(false, false)
-	err := svr.Shutdown()
+	err := svr.Shutdown(t.Context())
 	if err != nil {
 		t.Errorf("Shutdown Error [%v]", err)
 	}

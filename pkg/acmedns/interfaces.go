@@ -24,6 +24,6 @@ type AcmednsNS interface {
 	SetOwnAuthKey(key string)
 	SetNotifyStartedFunc(func())
 	ParseRecords()
-	Shutdown() error
+	Shutdown(ctx context.Context) error
 	GetVersion() string
 }

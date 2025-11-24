@@ -65,6 +65,22 @@ func setupDNS() (acmedns.AcmednsNS, acmedns.AcmednsDB, *observer.ObservedLogs) {
 	return &server, db, logObserver
 }
 
+func startTestDNS(t *testing.T) (acmedns.AcmednsNS, acmedns.AcmednsDB, *observer.ObservedLogs) {
+	server, db, logObserver := setupDNS()
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+	go server.Start(errChan)
+	t.Cleanup(func() {
+		if ns, ok := server.(*Nameserver); ok {
+			_ = ns.Shutdown(t.Context())
+		}
+	})
+	waitLock.Lock()
+	return server, db, logObserver
+}
+
 func (r *resolver) lookup(host string, qtype uint16) (*dns.Msg, error) {
 	msg := new(dns.Msg)
 	msg.Id = dns.Id()
@@ -100,7 +116,7 @@ func TestShutdownNilServer(t *testing.T) {
 		Server: nil,
 	}
 
-	err := ns.Shutdown()
+	err := ns.Shutdown(t.Context())
 
 	if err != nil {
 		t.Errorf("Expected nil error when shutting down nil server, but got %v", err)
@@ -115,7 +131,7 @@ func TestShutdownError(t *testing.T) {
 		t.Fatal("Could not cast interface to *Nameserver")
 	}
 
-	err := ns.Shutdown()
+	err := ns.Shutdown(t.Context())
 
 	if err == nil {
 		t.Error("Expected error 'dns: not started', but got nil")
@@ -184,20 +200,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestResolveA(t *testing.T) {
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 	resolv := resolver{server: "127.0.0.1:15353"}
 	answer, err := resolv.lookup("auth.example.org", dns.TypeA)
 	if err != nil {
@@ -218,20 +221,7 @@ func TestResolveA(t *testing.T) {
 }
 
 func TestEDNS(t *testing.T) {
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 	resolv := resolver{server: "127.0.0.1:15353"}
 	answer, _ := resolv.lookup("auth.example.org", dns.TypeOPT)
 	if answer.Rcode != dns.RcodeSuccess {
@@ -240,20 +230,7 @@ func TestEDNS(t *testing.T) {
 }
 
 func TestEDNSA(t *testing.T) {
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 	msg := new(dns.Msg)
 	msg.Id = dns.Id()
 	msg.Question = make([]dns.Question, 1)
@@ -274,20 +251,7 @@ func TestEDNSA(t *testing.T) {
 }
 
 func TestEDNSBADVERS(t *testing.T) {
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 	msg := new(dns.Msg)
 	msg.Id = dns.Id()
 	msg.Question = make([]dns.Question, 1)
@@ -308,20 +272,7 @@ func TestEDNSBADVERS(t *testing.T) {
 }
 
 func TestResolveCNAME(t *testing.T) {
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 	resolv := resolver{server: "127.0.0.1:15353"}
 	expected := "cn.example.org.	3600	IN	CNAME	something.example.org."
 	answer, err := resolv.lookup("cn.example.org", dns.TypeCNAME)
@@ -340,20 +291,7 @@ func TestResolveCNAME(t *testing.T) {
 }
 
 func TestAuthoritative(t *testing.T) {
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 	resolv := resolver{server: "127.0.0.1:15353"}
 	answer, _ := resolv.lookup("nonexistent.auth.example.org", dns.TypeA)
 	if answer.Rcode != dns.RcodeNameError {
@@ -392,20 +330,7 @@ func TestAuthoritative(t *testing.T) {
 }
 
 func TestResolveTXT(t *testing.T) {
-	// startTestDNS -------------
-	server, db, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, db, _ := startTestDNS(t)
 	resolv := resolver{server: "127.0.0.1:15353"}
 	validTXT := "______________valid_response_______________"
 
@@ -532,20 +457,7 @@ func hasExpectedTXTAnswer(answer []dns.RR, cmpTXT string) error {
 }
 
 func TestCaseInsensitiveResolveA(t *testing.T) {
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 	resolv := resolver{server: "127.0.0.1:15353"}
 	answer, err := resolv.lookup("aUtH.eXAmpLe.org", dns.TypeA)
 	if err != nil {
@@ -558,20 +470,7 @@ func TestCaseInsensitiveResolveA(t *testing.T) {
 }
 
 func TestCaseInsensitiveResolveSOA(t *testing.T) {
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 	resolv := resolver{server: "127.0.0.1:15353"}
 	answer, _ := resolv.lookup("doesnotexist.aUtH.eXAmpLe.org", dns.TypeSOA)
 	if answer.Rcode != dns.RcodeNameError {
@@ -602,20 +501,7 @@ func TestCaseInsensitiveResolveSOA(t *testing.T) {
 
 func TestResilienceToGarbageUDP(t *testing.T) {
 	addr := "127.0.0.1:15353"
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 
 	var d net.Dialer
 	conn, err := d.DialContext(context.Background(), "udp", addr)
@@ -642,20 +528,7 @@ func TestResilienceToGarbageUDP(t *testing.T) {
 
 func TestRefuseRecursiveQuery(t *testing.T) {
 	addr := "127.0.0.1:15353"
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 
 	msg := new(dns.Msg)
 	msg.SetQuestion(dns.Fqdn("google.com."), dns.TypeA)
@@ -677,20 +550,7 @@ func TestRefuseRecursiveQuery(t *testing.T) {
 
 func TestConcurrencySafe(t *testing.T) {
 	addr := "127.0.0.1:15353"
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 
 	resolv := resolver{server: addr}
 
@@ -721,20 +581,7 @@ func TestConcurrencySafe(t *testing.T) {
 
 func TestLargePacketParsing(t *testing.T) {
 	addr := "127.0.0.1:15353"
-	// startTestDNS -------------
-	server, _, _ := setupDNS()
-	errChan := make(chan error, 1)
-	waitLock := sync.Mutex{}
-	waitLock.Lock()
-	server.SetNotifyStartedFunc(waitLock.Unlock)
-	go server.Start(errChan)
-	t.Cleanup(func() {
-		if ns, ok := server.(*Nameserver); ok {
-			_ = ns.Shutdown()
-		}
-	})
-	waitLock.Lock()
-	// -------------
+	_, _, _ = startTestDNS(t)
 
 	msg := new(dns.Msg)
 	longLabel := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890"

@@ -1,6 +1,7 @@
 package nameserver
 
 import (
+	"context"
 	"strings"
 	"sync"
 
@@ -109,10 +110,10 @@ func (n *Nameserver) GetVersion() string {
 	return n.version
 }
 
-func (n *Nameserver) Shutdown() error {
+func (n *Nameserver) Shutdown(ctx context.Context) error {
 	if n.Server == nil {
 		return nil
 	}
 
-	return n.Server.Shutdown()
+	return n.Server.ShutdownContext(ctx)
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"net/http"
-	"time"
 
 	"github.com/kumakaba/acme-dns/pkg/acmedns"
 
@@ -136,13 +135,10 @@ func (a *AcmednsAPI) setupTLS(dnsservers []acmedns.AcmednsNS) *certmagic.Config 
 	return magic
 }
 
-func (a *AcmednsAPI) Shutdown() error {
+func (a *AcmednsAPI) Shutdown(ctx context.Context) error {
 	if a.server == nil {
 		return nil
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 
 	return a.server.Shutdown(ctx)
 }
