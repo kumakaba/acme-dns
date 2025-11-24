@@ -31,6 +31,8 @@ func TestSetupLogging(t *testing.T) {
 		{"json", "debug", zap.DebugLevel},
 		{"text", "info", zap.InfoLevel},
 		{"json", "error", zap.ErrorLevel},
+		{"text", "debug", zap.DebugLevel},
+		{"json", "info", zap.InfoLevel},
 	} {
 		conf.Logconfig.Format = test.format
 		conf.Logconfig.Level = test.level
@@ -51,21 +53,26 @@ func TestSetupLoggingError(t *testing.T) {
 		format      string
 		level       string
 		file        string
+		both        bool
 		errexpected bool
 	}{
-		{"text", "warn", "", false},
-		{"json", "debug", "", false},
-		{"text", "info", "", false},
-		{"json", "error", "", false},
-		{"text", "something", "", true},
-		{"text", "info", "a path with\" in its name.txt", false},
+		{"text", "warn", "", false, false},
+		{"json", "debug", "", false, false},
+		{"text", "info", "", false, false},
+		{"json", "error", "", false, false},
+		{"text", "something", "", false, true},
+		{"text", "info", "a path with\" in its name.txt", false, false},
+		{"text", "something", "", true, true},
+		{"json", "info", "a path with\" in its name.txt", true, false},
 	} {
 		conf.Logconfig.Format = test.format
 		conf.Logconfig.Level = test.level
 		if test.file != "" {
 			conf.Logconfig.File = test.file
 			conf.Logconfig.Logtype = "file"
-
+		}
+		if test.both {
+			conf.Logconfig.Logtype = "both"
 		}
 		_, err := SetupLogging(conf)
 		if test.errexpected && err == nil {
@@ -262,9 +269,9 @@ func TestReadConfigFallback2(t *testing.T) {
 		},
 		Logconfig: logconfig{
 			Level:   "info",
-			Logtype: "stdout",
+			Logtype: "both",
 			File:    "./acme-dns.log",
-			Format:  "json",
+			Format:  "text",
 		},
 	}
 

@@ -54,7 +54,7 @@ type httpapi struct {
 // Logging config
 type logconfig struct {
 	Level   string `toml:"loglevel" validate:"required,oneof=error warning info debug"`
-	Logtype string `toml:"logtype" validate:"required,oneof=stdout file"`
+	Logtype string `toml:"logtype" validate:"required,oneof=stdout file both"`
 	File    string `toml:"logfile"`
 	Format  string `toml:"logformat" validate:"required,oneof=json text"`
 }
