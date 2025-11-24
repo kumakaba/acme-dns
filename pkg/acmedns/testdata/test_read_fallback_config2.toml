@@ -31,6 +31,6 @@ header_name = "X-is-gonna-give-it-to-ya"
 
 [logconfig]
 loglevel = "info"
-logtype = "stdout"
+logtype = "both"
 logfile = "./acme-dns.log"
-logformat = "json"
+logformat = "text"

@@ -1,4 +1,8 @@
 
+- v1.3.0
+   - WIP: Refactoring Logging logic
+      - Add logtype="both" (stdout+file) paramter.
+
 - v1.2.0
    - Changed
       - Refactoring DNS response logic
