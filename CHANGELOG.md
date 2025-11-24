@@ -1,8 +1,12 @@
 
-- v1.2.0-preview
-   - WIP: Refactoring DNS response logic
-      - Refactor DNS response handling to correctly populate the Authority section.
-      - Ensure REFUSED is returned for out-of-zone queries.
+- v1.2.0
+   - Changed
+      - Refactoring DNS response logic
+         - Refactor DNS response handling to correctly populate the Authority section.
+         - Ensure REFUSED is returned for out-of-zone queries.
+      - Added context support for gracefull shotdown.
+      - Added config check and validation logic.
+         - NOTE: if you specify a path to a configuration file with the "-c" command line option, there is no fallback.
 
 - FORK from [joohoi/acme-dns Commit dc1a8f5](https://github.com/joohoi/acme-dns/tree/dc1a8f54b1a1132572765c6ab91e5d78a5be5e7e)
 

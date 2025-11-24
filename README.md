@@ -110,6 +110,13 @@ The method can be used to check readiness and/or liveness of the server. It will
 
 ```GET /health```
 
+#### Response
+
+```Status: 200 OK```
+```
+(no content)
+```
+
 ## Self-hosted
 
 You are encouraged to run your own acme-dns instance, because you are effectively authorizing the acme-dns server to act on your behalf in providing the answer to the challenging CA, making the instance able to request (and get issued) a TLS certificate for the domain that has CNAME pointing to it.
@@ -126,7 +133,7 @@ See the INSTALL section for information on how to do this.
 git clone https://github.com/kumakaba/acme-dns
 cd acme-dns
 export GOPATH=/tmp/acme-dns
-go build
+CGO_ENABLED=1 go build
 ```
 
 3) Move the built acme-dns binary to a directory in your $PATH, for example:
@@ -152,36 +159,19 @@ go build
 
 6) If you did not install the systemd service, run `acme-dns`. Please note that acme-dns needs to open a privileged port (53, domain), so it needs to be run with elevated privileges.
 
-### Using Docker
-
-1) Pull the latest acme-dns Docker image: `docker pull kumakaba/acme-dns`.
-
-2) Create directories: `config` for the configuration file, and `data` for the sqlite database.
-
-3) Copy [configuration template](https://raw.githubusercontent.com/kumakaba/acme-dns/master/config.cfg) to `config/config.cfg`.
-
-4) Modify the `config.cfg` to suit your needs.
-
-5) Run Docker, this example expects that you have `port = "80"` in your `config.cfg`:
-```
-docker run --rm --name acmedns                 \
- -p 53:53                                      \
- -p 53:53/udp                                  \
- -p 80:80                                      \
- -v /path/to/your/config:/etc/acme-dns:ro      \
- -v /path/to/your/data:/var/lib/acme-dns       \
- -d kumakaba/acme-dns
-```
 
 ### Docker Compose
 
-1) Create directories: `config` for the configuration file, and `data` for the sqlite3 database.
+Note: I have only tested it with Docker version 28.2.2.
+
+1) Create directories: `config` for the configuration file.
 
 2) Copy [configuration template](https://raw.githubusercontent.com/kumakaba/acme-dns/master/config.cfg) to `config/config.cfg`.
 
 3) Copy [docker-compose.yml from the project](https://raw.githubusercontent.com/kumakaba/acme-dns/master/docker-compose.yml), or create your own.
 
-4) Edit the `config/config.cfg` and `docker-compose.yml` to suit your needs, and run `docker-compose up -d`.
+4) Edit the `config/config.cfg` and `docker-compose.yml` to suit your needs, and run `docker compose up -d --build`.
+
 
 ## DNS Records
 
