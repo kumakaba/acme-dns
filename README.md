@@ -133,7 +133,7 @@ See the INSTALL section for information on how to do this.
 git clone https://github.com/kumakaba/acme-dns
 cd acme-dns
 export GOPATH=/tmp/acme-dns
-CGO_ENABLED=1 go build
+CGO_ENABLED=0 go build
 ```
 
 3) Move the built acme-dns binary to a directory in your $PATH, for example:
@@ -157,7 +157,7 @@ CGO_ENABLED=1 go build
 
     7) Run acme-dns: `sudo systemctl start acme-dns.service`.
 
-6) If you did not install the systemd service, run `acme-dns`. Please note that acme-dns needs to open a privileged port (53, domain), so it needs to be run with elevated privileges.
+6) If you did not install the systemd service, run `acme-dns`. Please note that acme-dns needs to open a privileged port (53, domain), so it needs to be run with elevated privileges, or `sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/acme-dns`.
 
 
 ### Docker Compose
@@ -218,73 +218,7 @@ $ dig -t txt @auth.example.org d420c923-bbd7-4056-ab64-c3ca54c9b3cf.auth.example
 
 ## Configuration
 
-```bash
-[general]
-# DNS interface. Note that systemd-resolved may reserve port 53 on 127.0.0.53
-# In this case acme-dns will error out and you will need to define the listening interface
-# for example: listen = "127.0.0.1:53"
-listen = "127.0.0.1:53"
-# protocol, "both", "both4", "both6", "udp", "udp4", "udp6" or "tcp", "tcp4", "tcp6"
-protocol = "both"
-# domain name to serve the requests off of
-domain = "auth.example.org"
-# zone name server
-nsname = "auth.example.org"
-# admin email address, where @ is substituted with .
-nsadmin = "admin.example.org"
-# predefined records served in addition to the TXT
-records = [
-    # domain pointing to the public IP of your acme-dns server 
-    "auth.example.org. A 198.51.100.1",
-    # specify that auth.example.org will resolve any *.auth.example.org records
-    "auth.example.org. NS auth.example.org.",
-]
-# debug messages from CORS etc
-debug = false
-
-[database]
-# Database engine to use, sqlite(sqlite3) or postgres
-engine = "sqlite"
-# Connection string, filename for sqlite and postgres://$username:$password@$host/$db_name for postgres
-# Please note that the default Docker image uses path /var/lib/acme-dns/acme-dns.db for sqlite
-connection = "/var/lib/acme-dns/acme-dns.db"
-# connection = "postgres://user:password@localhost/acmedns_db"
-
-[api]
-# listen ip eg. 127.0.0.1
-ip = "0.0.0.0"
-# disable registration endpoint
-disable_registration = false
-# listen port, eg. 443 for default HTTPS
-port = "443"
-# possible values: "letsencrypt", "letsencryptstaging", "cert", "none"
-tls = "letsencryptstaging"
-# only used if tls = "cert"
-tls_cert_privkey = "/etc/tls/example.org/privkey.pem"
-tls_cert_fullchain = "/etc/tls/example.org/fullchain.pem"
-# only used if tls = "letsencrypt"
-acme_cache_dir = "api-certs"
-# optional e-mail address to which Let's Encrypt will send expiration notices for the API's cert
-notification_email = ""
-# CORS AllowOrigins, wildcards can be used
-corsorigins = [
-    "*"
-]
-# use HTTP header to get the client ip
-use_header = false
-# header name to pull the ip address / list of ip addresses from
-header_name = "X-Forwarded-For"
-
-[logconfig]
-# logging level: "error", "warning", "info" or "debug"
-loglevel = "debug"
-# possible values: stdout, TODO file & integrations
-logtype = "stdout"
-# file path for logfile TODO
-# logfile = "./acme-dns.log"
-# format, either "json" or "text"
-logformat = "text"
-```
+see [configuration template](https://raw.githubusercontent.com/kumakaba/acme-dns/master/config.cfg).
 
 ## HTTPS API
 
