@@ -539,3 +539,73 @@ func TestShutdown(t *testing.T) {
 		t.Errorf("Shutdown Error [%v]", err)
 	}
 }
+
+func TestSetupHandlerSuccess1(t *testing.T) {
+
+	config, _ := fakeConfigAndLogger()
+	stdlogger, _ := zap.NewStdLogAt(zap.L(), zap.ErrorLevel)
+
+	config.General.Debug = false
+	config.API.DisableRegistration = false
+	config.API.IP = "127.9.8.7"
+	config.API.Port = "8080"
+
+	a := &AcmednsAPI{
+		Config: &config,
+	}
+
+	handler, host, err := a.setupHandler(stdlogger)
+
+	if err != nil {
+		t.Errorf("setupHandler Error [%v]", err)
+	}
+	if handler == nil {
+		t.Errorf("handler expect Error")
+	}
+	if host != "127.9.8.7:8080" {
+		t.Errorf("host expect Error [%s]", host)
+	}
+
+	targetpath := "/register"
+	req := httptest.NewRequest("GET", targetpath, nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != 405 {
+		t.Errorf("Request to %s got status %d, want 405", targetpath, w.Code)
+	}
+}
+
+func TestSetupHandlerSuccess2(t *testing.T) {
+
+	config, _ := fakeConfigAndLogger()
+	stdlogger, _ := zap.NewStdLogAt(zap.L(), zap.ErrorLevel)
+
+	config.General.Debug = true
+	config.API.DisableRegistration = true
+	config.API.IP = "127.6.5.4"
+	config.API.Port = "8080"
+
+	a := &AcmednsAPI{
+		Config: &config,
+	}
+
+	handler, host, err := a.setupHandler(stdlogger)
+
+	if err != nil {
+		t.Errorf("setupHandler Error [%v]", err)
+	}
+	if handler == nil {
+		t.Errorf("handler expect Error")
+	}
+	if host != "127.6.5.4:8080" {
+		t.Errorf("host expect Error [%s]", host)
+	}
+
+	targetpath := "/register"
+	req := httptest.NewRequest("GET", targetpath, nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != 404 {
+		t.Errorf("Request to %s got status %d, want 404", targetpath, w.Code)
+	}
+}

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/tls"
+	"log"
 	"net/http"
 
 	"github.com/kumakaba/acme-dns/pkg/acmedns"
@@ -26,15 +27,10 @@ func Init(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.Sugar
 	return a
 }
 
-func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
-	var err error
-	//TODO: do we want to debug log the HTTP server?
-	stderrorlog, err := zap.NewStdLogAt(a.Logger.Desugar(), zap.ErrorLevel)
-	if err != nil {
-		a.errChan <- err
-		return
-	}
+func (a *AcmednsAPI) setupHandler(stderrorlog *log.Logger) (http.Handler, string, error) {
+
 	api := httprouter.New()
+
 	c := cors.New(cors.Options{
 		AllowedOrigins:     a.Config.API.CorsOrigins,
 		AllowedMethods:     []string{"GET", "POST"},
@@ -42,9 +38,9 @@ func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
 		Debug:              a.Config.General.Debug,
 	})
 	if a.Config.General.Debug {
-		// Logwriter for saner log output
 		c.Log = stderrorlog
 	}
+
 	if !a.Config.API.DisableRegistration {
 		api.POST("/register", a.webRegisterPost)
 	}
@@ -53,12 +49,30 @@ func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
 
 	host := a.Config.API.IP + ":" + a.Config.API.Port
 
+	handler := c.Handler(api)
+
+	return handler, host, nil
+}
+
+func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
+	var err error
+	//TODO: do we want to debug log the HTTP server?
+	stderrorlog, err := zap.NewStdLogAt(a.Logger.Desugar(), zap.ErrorLevel)
+	if err != nil {
+		a.errChan <- err
+		return
+	}
+
+	handler, host, err := a.setupHandler(stderrorlog)
+	if err != nil {
+		a.errChan <- err
+		return
+	}
+
 	// TLS specific general settings
 	cfg := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}
-
-	handler := c.Handler(api)
 
 	switch a.Config.API.TLS {
 	case acmedns.ApiTlsProviderLetsEncrypt, acmedns.ApiTlsProviderLetsEncryptStaging:
