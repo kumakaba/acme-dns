@@ -267,8 +267,6 @@ use for the renewal.
 ## TODO
 
 - Add "options" table for record parameter extend (ex: created_at,description,etc...)
-- DNSSEC
-- DoT / DoH
 - Change API root path (though using nginx as a reverse proxy would suffice)
 
 ## Contributing

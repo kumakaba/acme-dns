@@ -1,6 +1,14 @@
 package nameserver
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"math/big"
+
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -10,6 +18,7 @@ import (
 	"testing"
 
 	"net"
+	"os"
 	"time"
 
 	"github.com/erikstmartin/go-testdb"
@@ -492,6 +501,289 @@ func TestCaseInsensitiveResolveSOA(t *testing.T) {
 
 	if soa.Minttl != 1 {
 		t.Errorf("Expected SOA Minttl to be 1, but got %d", soa.Minttl)
+	}
+}
+
+func TestNewDNSServerAllProto(t *testing.T) {
+	config, logger, _ := fakeConfigAndLogger()
+	config.General.Domain = "ExAmPlE.oRg"
+	config.General.Listen = "127.0.0.1:15353"
+
+	db, _ := database.Init(&config, logger)
+
+	tests := []struct {
+		name      string
+		proto     string
+		wantProto string
+	}{
+		{"UDPv4", "udp", "udp"},
+		{"TCPv4", "tcp", "tcp"},
+		{"DoT", "tcp-tls", "tcp-tls"}, // DoTの場合
+		{"UDPv6", "udp6", "udp6"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nsInterface := NewDNSServer(&config, db, logger, tt.proto, "v1.0.0")
+
+			ns, ok := nsInterface.(*Nameserver)
+			if !ok {
+				t.Fatal("NewDNSServer did not return *Nameserver struct")
+			}
+
+			if ns.Server.Net != tt.wantProto {
+				t.Errorf("Expected Server.Net to be %q, got %q", tt.wantProto, ns.Server.Net)
+			}
+
+			if ns.Server.Addr != config.General.Listen {
+				t.Errorf("Expected Server.Addr to be %q, got %q", config.General.Listen, ns.Server.Addr)
+			}
+
+			expectedDomain := "example.org."
+			if ns.OwnDomain != expectedDomain {
+				t.Errorf("Expected OwnDomain to be normalized to %q, got %q", expectedDomain, ns.OwnDomain)
+			}
+
+			if ns.Domains == nil {
+				t.Error("Domains map was not initialized (is nil)")
+			}
+
+			if ns.GetVersion() == "" {
+				t.Errorf("Expected version string, got empty")
+			}
+		})
+	}
+}
+
+func TestInitAndStartSingleProtocols(t *testing.T) {
+
+	config, logger, _ := fakeConfigAndLogger()
+	config.General.Listen = "127.0.0.1:15353"
+	config.General.Proto = "udp4"
+
+	config.General.DoTListen = "127.0.0.1:28853"
+	config.General.TlsCertFile = "/dev/null/non_existent_file"
+	config.General.TlsKeyFile = "/dev/null/non_existent_file"
+
+	db, _ := database.Init(&config, logger)
+
+	errChan := make(chan error, 10)
+
+	servers := InitAndStart(&config, db, logger, errChan, "vTest")
+
+	t.Cleanup(func() {
+		for _, s := range servers {
+			if ns, ok := s.(*Nameserver); ok {
+				_ = ns.Shutdown(t.Context())
+			}
+		}
+	})
+
+	expectedCount := 1
+	if len(servers) != expectedCount {
+		t.Errorf("Expected %d servers started, but got %d", expectedCount, len(servers))
+	}
+
+	protocols := make(map[string]bool)
+	for _, s := range servers {
+		ns := s.(*Nameserver)
+		protocols[ns.Server.Net] = true
+	}
+
+	if !protocols["udp4"] {
+		t.Error("UDP4 server not started")
+	}
+}
+
+func TestInitAndStartBothProtocols(t *testing.T) {
+	certPath, keyPath := generateSelfSignedCert(t)
+
+	config, logger, _ := fakeConfigAndLogger()
+	config.General.Listen = "127.0.0.1:15353"
+	config.General.Proto = "both"
+
+	config.General.DoTListen = ""
+	config.General.TlsCertFile = certPath
+	config.General.TlsKeyFile = keyPath
+
+	db, _ := database.Init(&config, logger)
+
+	errChan := make(chan error, 10)
+
+	servers := InitAndStart(&config, db, logger, errChan, "vTest")
+
+	t.Cleanup(func() {
+		for _, s := range servers {
+			if ns, ok := s.(*Nameserver); ok {
+				_ = ns.Shutdown(t.Context())
+			}
+		}
+	})
+
+	expectedCount := 3
+	if len(servers) != expectedCount {
+		t.Errorf("Expected %d servers started, but got %d", expectedCount, len(servers))
+	}
+
+	protocols := make(map[string]bool)
+	for _, s := range servers {
+		ns := s.(*Nameserver)
+		protocols[ns.Server.Net] = true
+	}
+
+	if !protocols["udp"] {
+		t.Error("UDP server not started")
+	}
+	if !protocols["tcp"] {
+		t.Error("TCP server not started")
+	}
+
+	if !protocols["tcp-tls"] && !protocols["tcp-tls4"] && !protocols["tcp-tls6"] {
+		t.Error("DoT (tcp-tls) server not started")
+	}
+}
+
+//////////////////////////////////////////////////
+// DoT Test
+//////////////////////////////////////////////////
+
+func generateSelfSignedCert(t *testing.T) (certPath, keyPath string) {
+	t.Helper()
+
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("Failed to generate private key: %v", err)
+	}
+
+	notBefore := time.Now()
+	notAfter := notBefore.Add(1 * time.Hour)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		t.Fatalf("Failed to generate serial number: %v", err)
+	}
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		DNSNames:              []string{"localhost"},
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	if err != nil {
+		t.Fatalf("Failed to create certificate: %v", err)
+	}
+
+	tmpDir := t.TempDir()
+	certFile, err := os.CreateTemp(tmpDir, "cert.pem")
+	if err != nil {
+		t.Fatalf("Failed to create cert file: %v", err)
+	}
+	keyFile, err := os.CreateTemp(tmpDir, "key.pem")
+	if err != nil {
+		t.Fatalf("Failed to create key file: %v", err)
+	}
+
+	if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		t.Fatalf("Failed to write cert pem: %v", err)
+	}
+	certFile.Close()
+
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		t.Fatalf("Unable to marshal private key: %v", err)
+	}
+	if err := pem.Encode(keyFile, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
+		t.Fatalf("Failed to write key pem: %v", err)
+	}
+	keyFile.Close()
+
+	return certFile.Name(), keyFile.Name()
+}
+
+func TestDoTResolve(t *testing.T) {
+	certPath, keyPath := generateSelfSignedCert(t)
+
+	config, logger, _ := fakeConfigAndLogger()
+	config.General.Domain = "auth.example.org"
+	config.General.Listen = "127.0.0.1:18853" // Use a different port for DoT test
+	config.General.Proto = "tcp-tls"
+	config.General.TlsCertFile = certPath
+	config.General.TlsKeyFile = keyPath
+	config.General.StaticRecords = records
+	config.General.Nsname = "ns1.auth.example.org"
+	config.General.Nsadmin = "admin.example.org"
+
+	db, _ := database.Init(&config, logger)
+
+	server := Nameserver{Config: &config, DB: db, Logger: logger, personalAuthKey: ""}
+	server.Domains = make(map[string]Records)
+	server.ParseRecords()
+	server.OwnDomain = "auth.example.org."
+
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		t.Fatalf("Failed to load generated certs: %v", err)
+	}
+
+	server.Server = &dns.Server{
+		Addr: config.General.Listen,
+		Net:  "tcp-tls",
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		},
+	}
+
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+
+	go server.Start(errChan)
+
+	t.Cleanup(func() {
+		_ = server.Shutdown(t.Context())
+	})
+
+	waitLock.Lock()
+
+	client := new(dns.Client)
+	client.Net = "tcp-tls"
+
+	// Important: Skip verification because we are using a self-signed cert
+	client.TLSConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	msg := new(dns.Msg)
+	msg.SetQuestion(dns.Fqdn("auth.example.org"), dns.TypeA)
+	in, _, err := client.Exchange(msg, config.General.Listen)
+
+	if err != nil {
+		t.Fatalf("DoT Exchange failed: %v", err)
+	}
+	if in == nil {
+		t.Fatal("DoT Exchange returned nil message")
+	}
+	if in.Rcode != dns.RcodeSuccess {
+		t.Errorf("Expected RcodeSuccess, got %s", dns.RcodeToString[in.Rcode])
+	}
+	if len(in.Answer) == 0 {
+		t.Error("No answer for DoT query")
+	} else {
+		if a, ok := in.Answer[0].(*dns.A); ok {
+			if a.A.String() != "192.168.1.100" {
+				t.Errorf("Expected 192.168.1.100, got %s", a.A.String())
+			}
+		}
 	}
 }
 

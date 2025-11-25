@@ -72,6 +72,7 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 	}
 
 	// DoT (DNS over TLS)
+	dotListen := config.General.DoTListen
 	tlsCert := config.General.TlsCertFile
 	tlsKey := config.General.TlsKeyFile
 	if tlsCert != "" && tlsKey != "" {
@@ -95,27 +96,31 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 			}
 
 			dotServer := NewDNSServer(config, db, logger, dotProto, versionStr)
-			dotServer.(*Nameserver).Server.Addr = ":853" // DoT use port:853
+
+			if dotListen == "" {
+				dotListen = "127.0.0.1:853"
+			}
+			dotServer.(*Nameserver).Server.Addr = dotListen
 
 			cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
 			if err != nil {
 				logger.Errorw("Failed to load TLS certs for DoT", "error", err)
 			} else {
-				logger.Debug("configure dotServer")
+				// logger.Debug("configure dotServer")
 				dotServer.(*Nameserver).Server.TLSConfig = &tls.Config{
 					Certificates: []tls.Certificate{cert},
 					MinVersion:   tls.VersionTLS12,
 				}
 
-				logger.Debug("append dotServer")
+				// logger.Debug("append dotServer")
 				dnsservers = append(dnsservers, dotServer)
-				logger.Debug("dotServer.ParseRecords")
+				// logger.Debug("dotServer.ParseRecords")
 				dotServer.ParseRecords()
 
 				waitLock.Lock()
-				logger.Debug("dotServer.SetNotifyStartedFunc")
+				// logger.Debug("dotServer.SetNotifyStartedFunc")
 				dotServer.SetNotifyStartedFunc(waitLock.Unlock)
-				logger.Debug("dotServer.Start")
+				// logger.Debug("dotServer.Start")
 				go dotServer.Start(errChan)
 				waitLock.Lock()
 			}
@@ -129,7 +134,6 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 
 // NewDNSServer parses the DNS records from config and returns a new DNSServer struct
 func NewDNSServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, proto string, versionStr string) acmedns.AcmednsNS {
-	//		dnsServerTCP := NewDNSServer(DB, Config.General.Listen, tcpProto, Config.General.Domain)
 	server := Nameserver{Config: config, DB: db, Logger: logger}
 	server.Server = &dns.Server{Addr: config.General.Listen, Net: proto}
 	domain := config.General.Domain
