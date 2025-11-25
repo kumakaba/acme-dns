@@ -1,7 +1,13 @@
 
 - v1.3.0-preview
-   - WIP: Refactoring Logging logic
-      - Add value "both"(stdout+file) for logconfig/logtype paramter.
+   - WIP: feat: Implemented DNS over TLS (DoT)
+      - Fix handler registration bug by using per-server ServeMux (resolves protocol reporting issue).
+      - Enforce Read/Write timeouts for nameserver.
+      - NOTE: You need to specify the path to the cert file in config. Automatic updates are not yet supported.
+      - NOTE: DoH (DNS over HTTPS) implementation is currently not planned as it is considered a lower priority.
+   - Changed
+      - Refactoring Logging logic
+         - Add value "both"(stdout+file) for logconfig/logtype paramter.
 
 - v1.2.1
    - Tiny Fixed: Dockerfile for sqlite driver error

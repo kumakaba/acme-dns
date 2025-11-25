@@ -2,8 +2,10 @@ package nameserver
 
 import (
 	"context"
+	"crypto/tls"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/miekg/dns"
 	"go.uber.org/zap"
@@ -68,6 +70,60 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 		go dnsServer.Start(errChan)
 		waitLock.Lock()
 	}
+
+	// DoT (DNS over TLS)
+	tlsCert := config.General.TlsCertFile
+	tlsKey := config.General.TlsKeyFile
+	if tlsCert != "" && tlsKey != "" {
+		tlsEnable := true
+		if !acmedns.FileIsAccessible(tlsCert) {
+			logger.Error("Not accessible tls certfile")
+			tlsEnable = false
+		}
+		if !acmedns.FileIsAccessible(tlsKey) {
+			logger.Error("Not accessible tls keyfile")
+			tlsEnable = false
+		}
+		if tlsEnable {
+			waitLock.Unlock()
+			logger.Debugw("TLS config found setup for DoT", "tls_cert_filepath", tlsCert, "tls_key_filepath", tlsKey)
+			dotProto := "tcp-tls"
+			if strings.HasSuffix(config.General.Proto, "4") {
+				dotProto += "4"
+			} else if strings.HasSuffix(config.General.Proto, "6") {
+				dotProto += "6"
+			}
+
+			dotServer := NewDNSServer(config, db, logger, dotProto, versionStr)
+			dotServer.(*Nameserver).Server.Addr = ":853" // DoT use port:853
+
+			cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+			if err != nil {
+				logger.Errorw("Failed to load TLS certs for DoT", "error", err)
+			} else {
+				logger.Debug("configure dotServer")
+				dotServer.(*Nameserver).Server.TLSConfig = &tls.Config{
+					Certificates: []tls.Certificate{cert},
+					MinVersion:   tls.VersionTLS12,
+				}
+
+				logger.Debug("append dotServer")
+				dnsservers = append(dnsservers, dotServer)
+				logger.Debug("dotServer.ParseRecords")
+				dotServer.ParseRecords()
+
+				waitLock.Lock()
+				logger.Debug("dotServer.SetNotifyStartedFunc")
+				dotServer.SetNotifyStartedFunc(waitLock.Unlock)
+				logger.Debug("dotServer.Start")
+				go dotServer.Start(errChan)
+				waitLock.Lock()
+			}
+		} else {
+			logger.Error("Failed to start DoT")
+		}
+	}
+
 	return dnsservers
 }
 
@@ -89,7 +145,11 @@ func NewDNSServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 
 func (n *Nameserver) Start(errorChannel chan error) {
 	n.errChan = errorChannel
-	dns.HandleFunc(".", n.handleRequest)
+
+	mux := dns.NewServeMux()
+	mux.HandleFunc(".", n.handleRequest)
+	n.Server.Handler = mux
+
 	n.Logger.Infow("Starting DNS listener",
 		"addr", n.Server.Addr,
 		"proto", n.Server.Net)
@@ -104,6 +164,8 @@ func (n *Nameserver) Start(errorChannel chan error) {
 
 func (n *Nameserver) SetNotifyStartedFunc(fun func()) {
 	n.Server.NotifyStartedFunc = fun
+	n.Server.ReadTimeout = 3 * time.Second
+	n.Server.WriteTimeout = 3 * time.Second
 }
 
 func (n *Nameserver) GetVersion() string {

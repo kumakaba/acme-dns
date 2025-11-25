@@ -218,7 +218,7 @@ $ dig -t txt @auth.example.org d420c923-bbd7-4056-ab64-c3ca54c9b3cf.auth.example
 
 ## Configuration
 
-see [configuration template](https://raw.githubusercontent.com/kumakaba/acme-dns/master/config.cfg).
+see [configuration template](/config.cfg).
 
 ## HTTPS API
 

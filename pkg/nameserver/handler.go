@@ -83,6 +83,7 @@ func (n *Nameserver) answer(ctx context.Context, q dns.Question) ([]dns.RR, int,
 
 	if !authoritative {
 		n.Logger.Debugw("Refused question for domain",
+			"proto", n.Server.Net,
 			"qtype", dns.TypeToString[q.Qtype],
 			"domain", q.Name,
 			"rcode", dns.RcodeToString[dns.RcodeRefused])
@@ -109,6 +110,7 @@ func (n *Nameserver) answer(ctx context.Context, q dns.Question) ([]dns.RR, int,
 	}
 
 	n.Logger.Debugw("Answering question for domain",
+		"proto", n.Server.Net,
 		"qtype", dns.TypeToString[q.Qtype],
 		"domain", q.Name,
 		"rcode", dns.RcodeToString[rcode],

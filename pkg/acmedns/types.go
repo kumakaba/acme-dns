@@ -26,6 +26,8 @@ type general struct {
 	Nsname        string   `toml:"nsname" validate:"required,fqdn"`
 	Nsadmin       string   `toml:"nsadmin" validate:"required"`
 	Debug         bool     `toml:"debug"`
+	TlsCertFile   string   `toml:"tls_cert_filepath"`
+	TlsKeyFile    string   `toml:"tls_key_filepath"`
 	StaticRecords []string `toml:"records" validate:"required,dive,required"`
 }
 
