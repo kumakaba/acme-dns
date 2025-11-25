@@ -73,6 +73,15 @@ func Init(config *acmedns.AcmeDnsConfig, logger *zap.SugaredLogger) (acmedns.Acm
 	if config.Database.Connection == "" {
 		return d, errors.New("database connection string cannot be empty")
 	}
+	if config.Database.Engine == "sqlite" {
+		logger.Debugw("Using database",
+			"engine", config.Database.Engine,
+			"connection", config.Database.Connection,
+		)
+	} else {
+		logger.Debugw("Using database",
+			"engine", config.Database.Engine)
+	}
 	db, err := sql.Open(config.Database.Engine, config.Database.Connection)
 	if err != nil {
 		return d, err
@@ -84,6 +93,9 @@ func Init(config *acmedns.AcmeDnsConfig, logger *zap.SugaredLogger) (acmedns.Acm
 	if versionString == "" {
 		versionString = "0"
 	}
+	logger.Debugw("database open successful",
+		"db_version", versionString,
+	)
 	_, _ = d.DB.ExecContext(context.Background(), acmeTable)
 	_, _ = d.DB.ExecContext(context.Background(), userTable)
 	if config.Database.Engine == "sqlite" {

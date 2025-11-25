@@ -266,7 +266,6 @@ use for the renewal.
 
 ## TODO
 
-- Logging to a file
 - Add "options" table for record parameter extend (ex: created_at,description,etc...)
 - DNSSEC
 - DoT / DoH

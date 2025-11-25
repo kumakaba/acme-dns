@@ -1,7 +1,11 @@
 
 - v1.3.0
    - WIP: Refactoring Logging logic
-      - Add logtype="both" (stdout+file) paramter.
+      - Add value "both"(stdout+file) for logconfig/logtype paramter.
+
+- v1.2.1
+   - Tiny Fixed: Dockerfile for sqlite driver error
+      - NOTE: If you see 'unknown driver "sqlite"' error at runtime, run: docker compose build --no-cache
 
 - v1.2.0
    - Changed
