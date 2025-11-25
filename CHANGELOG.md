@@ -1,5 +1,5 @@
 
-- v1.3.0
+- v1.3.0-preview
    - WIP: Refactoring Logging logic
       - Add value "both"(stdout+file) for logconfig/logtype paramter.
 
