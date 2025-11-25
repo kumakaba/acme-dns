@@ -71,6 +71,8 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 		waitLock.Lock()
 	}
 
+	waitLock.Unlock()
+
 	// DoT (DNS over TLS)
 	dotListen := config.General.DoTListen
 	tlsCert := config.General.TlsCertFile
@@ -86,7 +88,6 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 			tlsEnable = false
 		}
 		if tlsEnable {
-			waitLock.Unlock()
 			logger.Debugw("TLS config found setup for DoT", "tls_cert_filepath", tlsCert, "tls_key_filepath", tlsKey)
 			dotProto := "tcp-tls"
 			if strings.HasSuffix(config.General.Proto, "4") {

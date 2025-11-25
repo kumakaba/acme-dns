@@ -602,7 +602,7 @@ func TestInitAndStartBothProtocols(t *testing.T) {
 	config.General.Listen = "127.0.0.1:15353"
 	config.General.Proto = "both"
 
-	config.General.DoTListen = ""
+	config.General.DoTListen = "127.0.0.1:25853"
 	config.General.TlsCertFile = certPath
 	config.General.TlsKeyFile = keyPath
 
