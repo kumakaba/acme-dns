@@ -20,7 +20,7 @@ type AcmeDnsConfig struct {
 
 // Config file general section
 type general struct {
-	Listen        string   `toml:"listen" validate:"required,hostname_port"`
+	Listen        string   `toml:"listen" validate:"required"`
 	Proto         string   `toml:"protocol" validate:"required,oneof=both both4 both6 udp udp4 udp6 tcp tcp4 tcp6"`
 	Domain        string   `toml:"domain" validate:"required,fqdn"`
 	Nsname        string   `toml:"nsname" validate:"required,fqdn"`

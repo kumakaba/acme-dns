@@ -99,7 +99,7 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 			dotServer := NewDNSServer(config, db, logger, dotProto, versionStr)
 
 			if dotListen == "" {
-				dotListen = "127.0.0.1:853"
+				dotListen = ":853"
 			}
 			dotServer.(*Nameserver).Server.Addr = dotListen
 

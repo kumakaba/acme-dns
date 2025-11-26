@@ -237,7 +237,7 @@ func TestReadConfigFallback2(t *testing.T) {
 
 	expected := AcmeDnsConfig{
 		General: general{
-			Listen:  "127.0.0.1:53",
+			Listen:  ":53",
 			Proto:   "both",
 			Domain:  "test.example.org",
 			Nsname:  "test.example.org",
@@ -247,6 +247,7 @@ func TestReadConfigFallback2(t *testing.T) {
 				"test.example.org. A 127.0.0.1",
 				"test.example.org. NS test.example.org.",
 			},
+			DoTListen: "",
 		},
 		Database: dbsettings{
 			Engine:     "postgres",

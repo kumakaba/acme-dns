@@ -1,5 +1,5 @@
 [general]
-listen = "127.0.0.1:53"
+listen = ":53"
 protocol = "both"
 domain = "test.example.org"
 nsname = "test.example.org"
@@ -9,6 +9,8 @@ records = [
     "test.example.org. NS test.example.org.",
 ]
 debug = false
+
+dot_listen = ""
 
 [database]
 engine = "postgres"
