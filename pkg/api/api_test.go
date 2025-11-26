@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/kumakaba/acme-dns/pkg/acmedns"
 	"github.com/kumakaba/acme-dns/pkg/database"
@@ -607,5 +610,131 @@ func TestSetupHandlerSuccess2(t *testing.T) {
 	handler.ServeHTTP(w, req)
 	if w.Code != 404 {
 		t.Errorf("Request to %s got status %d, want 404", targetpath, w.Code)
+	}
+}
+
+// for api.Start
+
+func getFreePort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func waitForServer(url string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			cancel()
+			return err
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			resp.Body.Close()
+			cancel()
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+		} else {
+			cancel()
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return fmt.Errorf("server did not start in time: %s", url)
+}
+
+func TestAcmednsAPI_Start_HTTP_Success(t *testing.T) {
+	config, logger := fakeConfigAndLogger()
+	port, err := getFreePort()
+	if err != nil {
+		t.Fatalf("Failed to get free port: %v", err)
+	}
+
+	config.API.IP = "127.0.0.1"
+	config.API.Port = fmt.Sprintf("%d", port)
+	config.API.TLS = acmedns.ApiTlsProviderNone
+	config.General.Debug = true
+
+	errChan := make(chan error, 1)
+
+	_, _, db := setupRouter(false, false)
+	api := Init(&config, db, logger, errChan)
+
+	go api.Start(nil)
+
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := api.Shutdown(ctx); err != nil {
+			t.Errorf("Shutdown returned error: %v", err)
+		}
+	}()
+
+	healthURL := fmt.Sprintf("http://%s:%d/health", config.API.IP, port)
+
+	if err := waitForServer(healthURL, 2*time.Second); err != nil {
+		select {
+		case startErr := <-errChan:
+			t.Fatalf("Server failed to start with error: %v", startErr)
+		default:
+			t.Fatalf("Server unreachable: %v", err)
+		}
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), "GET", healthURL, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /health failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestAcmednsAPI_Start_PortAlreadyInUse(t *testing.T) {
+	config, logger := fakeConfigAndLogger()
+
+	lc := net.ListenConfig{}
+	l, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to listen on random port: %v", err)
+	}
+	defer l.Close()
+
+	_, portStr, _ := net.SplitHostPort(l.Addr().String())
+
+	config.API.IP = "127.0.0.1"
+	config.API.Port = portStr
+	config.API.TLS = acmedns.ApiTlsProviderNone
+
+	errChan := make(chan error, 1)
+
+	_, _, db := setupRouter(false, false)
+	api := Init(&config, db, logger, errChan)
+
+	go api.Start(nil)
+
+	select {
+	case err := <-errChan:
+		if err == nil {
+			t.Error("Expected an error from errChan, got nil")
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Timed out waiting for server start error")
 	}
 }
