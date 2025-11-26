@@ -1,4 +1,4 @@
-[![Go](https://github.com/kumakaba/acme-dns/actions/workflows/go_cov.yml/badge.svg)](https://github.com/kumakaba/acme-dns/actions/workflows/go_cov.yml) [![golangci-lint](https://github.com/kumakaba/acme-dns/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/kumakaba/acme-dns/actions/workflows/golangci-lint.yml) [![CodeQL Advanced](https://github.com/kumakaba/acme-dns/actions/workflows/codeql.yml/badge.svg)](https://github.com/kumakaba/acme-dns/actions/workflows/codeql.yml) [![Coverage Status](https://coveralls.io/repos/github/kumakaba/acme-dns/badge.svg?branch=master)](https://coveralls.io/github/kumakaba/acme-dns?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/kumakaba/acme-dns)](https://goreportcard.com/report/github.com/kumakaba/acme-dns)
+[![Go](https://github.com/kumakaba/acme-dns/actions/workflows/go_cov.yml/badge.svg)](https://github.com/kumakaba/acme-dns/actions/workflows/go_cov.yml) [![golangci-lint](https://github.com/kumakaba/acme-dns/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/kumakaba/acme-dns/actions/workflows/golangci-lint.yml) [![CodeQL Advanced](https://github.com/kumakaba/acme-dns/actions/workflows/codeql.yml/badge.svg)](https://github.com/kumakaba/acme-dns/actions/workflows/codeql.yml) [![codecov](https://codecov.io/github/kumakaba/acme-dns/graph/badge.svg?token=LCOR5LFXU8)](https://codecov.io/github/kumakaba/acme-dns) [![Go Report Card](https://goreportcard.com/badge/github.com/kumakaba/acme-dns)](https://goreportcard.com/report/github.com/kumakaba/acme-dns)
 # acme-dns
 
 A simplified DNS server with a RESTful HTTP API to provide a simple way to automate ACME DNS challenges.
@@ -262,7 +262,9 @@ use for the renewal.
 - Generic client library in Go: [https://github.com/cpu/goacmedns](https://github.com/cpu/goacmedns)
 
 
-## [Changelog](/CHANGELOG.md)
+## Changelog
+
+see [CHANGELOG.md](/CHANGELOG.md).
 
 ## TODO
 
