@@ -1,13 +1,15 @@
 
 - v1.3.0-preview
    - WIP: feat: Implemented DNS over TLS (DoT)
-      - Fix handler registration bug by using per-server ServeMux (resolves protocol reporting issue).
-      - Enforce Read/Write timeouts for nameserver.
-      - NOTE: You need to specify the path to the cert file in config. Automatic updates are not yet supported.
       - NOTE: DoH (DNS over HTTPS) implementation is currently not planned as it is considered a lower priority.
+      - NOTE: You need to specify the path to the cert file in config. Because issuing wildcard certificates using "certmagic" appears to be difficult, acme-dns does not support automatic certificate renewal for DoT; you must obtain a wildcard certificate using other means, such as "acme.sh".
+         - At this point, it's unlikely that any CA will use DoT/DoH, so this shouldn't be an issue.
    - Changed
       - Refactoring Logging logic
          - Add value "both"(stdout+file) for logconfig/logtype paramter.
+      - Refactoring Nameserver logic
+         - fix:  handler registration bug by using per-server ServeMux.
+         - feat: Enforce Read/Write timeouts for nameserver.
 
 - v1.2.1
    - Tiny Fixed: Dockerfile for sqlite driver error
