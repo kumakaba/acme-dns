@@ -4,6 +4,9 @@
       - NOTE: DoH (DNS over HTTPS) implementation is currently not planned as it is considered a lower priority.
       - NOTE: You need to specify the path to the cert file in config. Because issuing wildcard certificates using "certmagic" appears to be difficult, acme-dns does not support automatic certificate renewal for DoT; you must obtain a wildcard certificate using other means, such as "acme.sh".
          - At this point, it's unlikely that any CA will use DoT/DoH, so this shouldn't be an issue.
+   - WIP: feat: Implemented DNS over QUIC (DoQ)
+      - NOTE: DoQ must be enabled in the config and will function with DoT enabled.
+      - NOTE: DoQ has only been tested with "doggo".
    - Changed
       - Refactoring Logging logic
          - Add value "both"(stdout+file) for logconfig/logtype paramter.

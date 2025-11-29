@@ -3,11 +3,14 @@ package nameserver
 import (
 	"context"
 	"crypto/tls"
+	"encoding/binary"
+	"io"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/quic-go/quic-go"
 	"go.uber.org/zap"
 
 	"github.com/kumakaba/acme-dns/pkg/acmedns"
@@ -23,6 +26,7 @@ type Nameserver struct {
 	DB                acmedns.AcmednsDB
 	Logger            *zap.SugaredLogger
 	Server            *dns.Server
+	quicListener      *quic.Listener
 	OwnDomain         string
 	NotifyStartedFunc func()
 	SOA               dns.RR
@@ -88,7 +92,7 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 			tlsEnable = false
 		}
 		if tlsEnable {
-			logger.Debugw("TLS config found setup for DoT", "tls_cert_filepath", tlsCert, "tls_key_filepath", tlsKey)
+			logger.Debugw("TLS config found setup for DoT/DoQ", "tls_cert_filepath", tlsCert, "tls_key_filepath", tlsKey)
 			dotProto := "tcp-tls"
 			if strings.HasSuffix(config.General.Proto, "4") {
 				dotProto += "4"
@@ -124,10 +128,33 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 				// logger.Debug("dotServer.Start")
 				go dotServer.Start(errChan)
 				waitLock.Lock()
+
+				// DoQ (DNS over QUIC)
+				if config.General.EnableDoQ {
+					waitLock.Unlock()
+
+					// logger.Debug("configure doqServer")
+					doqListen := config.General.DoQListen
+					if doqListen == "" {
+						doqListen = ":853"
+					}
+					doqServer := NewDNSServer(config, db, logger, "udp-quic", versionStr)
+					doqServer.(*Nameserver).Server.Addr = doqListen
+
+					dnsservers = append(dnsservers, doqServer)
+					doqServer.ParseRecords()
+
+					waitLock.Lock()
+					doqServer.SetNotifyStartedFunc(waitLock.Unlock)
+
+					go doqServer.Start(errChan)
+					waitLock.Lock()
+				}
 			}
 		} else {
 			logger.Error("Failed to start DoT")
 		}
+
 	}
 
 	return dnsservers
@@ -149,6 +176,11 @@ func NewDNSServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 }
 
 func (n *Nameserver) Start(errorChannel chan error) {
+	if n.Server.Net == "udp-quic" {
+		n.StartDoQ(errorChannel)
+		return
+	}
+
 	n.errChan = errorChannel
 
 	mux := dns.NewServeMux()
@@ -167,8 +199,109 @@ func (n *Nameserver) Start(errorChannel chan error) {
 	}
 }
 
+// DoQ
+func NewDoQServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, versionStr string) acmedns.AcmednsNS {
+	server := NewDNSServer(config, db, logger, "udp-quic", versionStr)
+	return server
+}
+
+func (n *Nameserver) StartDoQ(errorChannel chan error) {
+	n.errChan = errorChannel
+
+	tlsCert := n.Config.General.TlsCertFile
+	tlsKey := n.Config.General.TlsKeyFile
+
+	cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+	if err != nil {
+		errorChannel <- err
+		if n.NotifyStartedFunc != nil {
+			n.NotifyStartedFunc()
+		}
+		return
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		NextProtos:   []string{"doq"}, // RFC 9250 ALPN
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	listener, err := quic.ListenAddr(n.Server.Addr, tlsConfig, nil)
+	if err != nil {
+		errorChannel <- err
+		if n.NotifyStartedFunc != nil {
+			n.NotifyStartedFunc()
+		}
+		return
+	}
+	n.quicListener = listener
+
+	n.Logger.Infow("Starting DoQ listener", "addr", n.Server.Addr, "proto", "udp-quic")
+
+	if n.NotifyStartedFunc != nil {
+		n.NotifyStartedFunc()
+	}
+
+	for {
+		conn, err := n.quicListener.Accept(context.Background())
+		if err != nil {
+			n.Logger.Infow("DoQ listener stopped", "error", err)
+			return
+		}
+
+		go n.handleDoQConnection(conn)
+	}
+}
+
+func (n *Nameserver) handleDoQConnection(conn *quic.Conn) {
+	for {
+		stream, err := conn.AcceptStream(context.Background())
+		if err != nil {
+			return
+		}
+
+		go func(s *quic.Stream) {
+			defer s.Close()
+
+			for {
+				// RFC 9250 Section 4.2: All DNS messages ... MUST be encoded as a 2-octet length field
+				prefixBuf := make([]byte, 2)
+				if _, err := io.ReadFull(s, prefixBuf); err != nil {
+					if err != io.EOF {
+						n.Logger.Debugw("Failed to read DoQ length prefix", "error", err)
+					}
+					return
+				}
+
+				msgLen := binary.BigEndian.Uint16(prefixBuf)
+
+				buf := make([]byte, msgLen)
+				if _, err := io.ReadFull(s, buf); err != nil {
+					n.Logger.Errorw("Failed to read DoQ message body", "error", err, "expected_len", msgLen)
+					return
+				}
+
+				req := new(dns.Msg)
+				if err := req.Unpack(buf); err != nil {
+					n.Logger.Errorw("DoQ Unpack failed", "error", err)
+					return
+				}
+
+				w := &QuicResponseWriter{
+					Stream:          s,
+					Connection:      conn,
+					UseLengthPrefix: true,
+				}
+
+				n.handleRequest(w, req)
+			}
+		}(stream)
+	}
+}
+
 func (n *Nameserver) SetNotifyStartedFunc(fun func()) {
 	n.Server.NotifyStartedFunc = fun
+	n.NotifyStartedFunc = fun
 	n.Server.ReadTimeout = 3 * time.Second
 	n.Server.WriteTimeout = 3 * time.Second
 }
@@ -179,6 +312,13 @@ func (n *Nameserver) GetVersion() string {
 
 func (n *Nameserver) Shutdown(ctx context.Context) error {
 	if n.Server == nil {
+		return nil
+	}
+	n.Logger.Debugw("Shutdown Nameserver", "proto", n.Server.Net)
+	if n.Server.Net == "udp-quic" {
+		if n.quicListener != nil {
+			return n.quicListener.Close()
+		}
 		return nil
 	}
 

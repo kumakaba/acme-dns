@@ -27,6 +27,8 @@ type general struct {
 	Nsadmin       string   `toml:"nsadmin" validate:"required"`
 	Debug         bool     `toml:"debug"`
 	DoTListen     string   `toml:"dot_listen"`
+	DoQListen     string   `toml:"doq_listen"`
+	EnableDoQ     bool     `toml:"enable_doq"`
 	TlsCertFile   string   `toml:"tls_cert_filepath"`
 	TlsKeyFile    string   `toml:"tls_key_filepath"`
 	StaticRecords []string `toml:"records" validate:"required,dive,required"`
