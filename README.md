@@ -36,6 +36,18 @@ Using acme-dns is a three-step process (provided you already have the self-hoste
 - Use your credentials to POST new DNS challenge values to an acme-dns server for the CA to validate from.
 - Crontab and forget.
 
+### Command Line Option
+
+```
+Usage of ./acme-dns:
+  -c string
+        config file location (default:./config.cfg fallback:/etc/acme-dns/config.cfg)
+        if the file cannot be accessed in defined this option, will terminate abnormally
+  -t    check configuration
+  -version
+        print the version
+```
+
 ## API
 
 ### Register endpoint
@@ -241,13 +253,13 @@ use for the renewal.
 
 ## Clients
 
-- acme.sh: [https://github.com/Neilpang/acme.sh](https://github.com/Neilpang/acme.sh)
+- acme.sh: [https://github.com/acmesh-official/acme.sh](https://github.com/acmesh-official/acme.sh)
 - Certify The Web: [https://github.com/webprofusion/certify](https://github.com/webprofusion/certify)
-- cert-manager: [https://github.com/jetstack/cert-manager](https://github.com/jetstack/cert-manager)
-- Lego: [https://github.com/xenolf/lego](https://github.com/xenolf/lego)
+- cert-manager: [https://github.com/cert-manager/cert-manager](https://github.com/cert-manager/cert-manager)
+- Lego: [https://github.com/go-acme/lego](https://github.com/go-acme/lego)
 - Posh-ACME: [https://github.com/rmbolger/Posh-ACME](https://github.com/rmbolger/Posh-ACME)
 - Sewer: [https://github.com/komuw/sewer](https://github.com/komuw/sewer)
-- Traefik: [https://github.com/containous/traefik](https://github.com/containous/traefik)
+- Traefik: [https://github.com/traefik/traefik](https://github.com/traefik/traefik)
 - Windows ACME Simple (WACS): [https://www.win-acme.com](https://www.win-acme.com)
 
 ### Authentication hooks

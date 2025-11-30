@@ -11,7 +11,7 @@ func TestMainVersionFlag(t *testing.T) {
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
-	exitCode := run(args, stdout, stderr)
+	exitCode := run(args, stdout, stderr, true)
 
 	if exitCode != 0 {
 		t.Errorf("Expected exit code 0, got %d", exitCode)
@@ -23,12 +23,12 @@ func TestMainVersionFlag(t *testing.T) {
 	}
 }
 
-func TestMainConfigtestFlag(t *testing.T) {
-	args := []string{"acme-dns", "-t", "-c", "config.cfg"}
+func TestMainDefaultConfigtestFlag(t *testing.T) {
+	args := []string{"acme-dns", "-t"}
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
-	exitCode := run(args, stdout, stderr)
+	exitCode := run(args, stdout, stderr, true)
 
 	if exitCode != 0 {
 		t.Error("Expected non-zero exit code for invalid flag")
@@ -37,6 +37,42 @@ func TestMainConfigtestFlag(t *testing.T) {
 	if !strings.Contains(stdout.String(), "succeeded") {
 		t.Errorf("Expected stdout succeeded message, got: %s", stdout.String())
 	}
+
+	if !strings.Contains(stdout.String(), "file: ./config.cfg") {
+		t.Errorf("Expected stdout 'file: ./config.cfg', got: %s", stdout.String())
+	}
+}
+
+func TestMainExistConfigtestFlag(t *testing.T) {
+	args := []string{"acme-dns", "-t", "-c", "config.cfg"}
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+
+	exitCode := run(args, stdout, stderr, true)
+
+	if exitCode != 0 {
+		t.Error("Expected non-zero exit code for invalid flag")
+	}
+
+	if !strings.Contains(stdout.String(), "succeeded") {
+		t.Errorf("Expected stdout succeeded message, got: %s", stdout.String())
+	}
+
+	if !strings.Contains(stdout.String(), "file: config.cfg") {
+		t.Errorf("Expected stdout 'file: config.cfg', got: %s", stdout.String())
+	}
+}
+
+func TestMainEmptyConfigtestFlag(t *testing.T) {
+	args := []string{"acme-dns", "-t", "-c", ""}
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+
+	_ = run(args, stdout, stderr, true)
+
+	if !strings.Contains(stdout.String(), "file:  failed") {
+		t.Errorf("Expected stdout 'file:  failed', got: %s", stdout.String())
+	}
 }
 
 func TestMainNonexistConfigtestFlag(t *testing.T) {
@@ -44,7 +80,7 @@ func TestMainNonexistConfigtestFlag(t *testing.T) {
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
-	exitCode := run(args, stdout, stderr)
+	exitCode := run(args, stdout, stderr, true)
 
 	if exitCode == 0 {
 		t.Error("Expected non-zero exit code for invalid flag")
@@ -60,7 +96,7 @@ func TestMainInvalidFlag(t *testing.T) {
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
-	exitCode := run(args, stdout, stderr)
+	exitCode := run(args, stdout, stderr, true)
 
 	if exitCode == 0 {
 		t.Error("Expected non-zero exit code for invalid flag")
@@ -68,5 +104,25 @@ func TestMainInvalidFlag(t *testing.T) {
 
 	if !strings.Contains(stderr.String(), "flag provided but not defined") {
 		t.Errorf("Expected flag error in stderr, got: %s", stderr.String())
+	}
+}
+
+func TestMainDummyConfigtestFlag(t *testing.T) {
+	args := []string{"acme-dns", "-c", "./pkg/acmedns/testdata/test_main_dummy_config.toml"}
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+
+	exitCode := run(args, stdout, stderr, true)
+
+	if exitCode != 0 {
+		t.Errorf("Expected TestRun finish exitCode 0, but %d", exitCode)
+	}
+
+	if stdout.String() != "" {
+		t.Errorf("Expected TestRun stdout is empty, but not")
+	}
+
+	if stderr.String() != "" {
+		t.Errorf("Expected TestRun stderr is empty, but not")
 	}
 }

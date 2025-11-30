@@ -20,20 +20,20 @@ import (
 
 var (
 	Version  = "v1.3.0"           // VERSION_STR
-	Revision = "preview20251130a" // VERSION_STR
+	Revision = "preview20251130b" // VERSION_STR
 )
 
 func main() {
 	syscall.Umask(0077)
-	os.Exit(run(os.Args, os.Stdout, os.Stderr))
+	os.Exit(run(os.Args, os.Stdout, os.Stderr, false))
 }
 
-func run(args []string, stdout, stderr io.Writer) int {
+func run(args []string, stdout, stderr io.Writer, testRun bool) int {
 	// define commandline options
 	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	configTestFlag := fs.Bool("t", false, "check configuration")
-	configPtr := fs.String("c", "/etc/acme-dns/config.cfg", "config file location")
+	configPtr := fs.String("c", "", "config file location (default:./config.cfg fallback:/etc/acme-dns/config.cfg)\nif the file cannot be accessed in defined this option, will terminate abnormally")
 	versionFlag := fs.Bool("version", false, "print the version")
 
 	if err := fs.Parse(args[1:]); err != nil {
@@ -45,10 +45,25 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "kumakaba/acme-dns (%s-%s)\n", Version, Revision)
 		return 0
 	}
+
 	// Read global config
+	isConfigFlagProvided := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "c" {
+			isConfigFlagProvided = true
+		}
+	})
+
+	configPath := "./config.cfg"
+	fallbackPath := "/etc/acme-dns/config.cfg"
+	if isConfigFlagProvided {
+		configPath = *configPtr
+		fallbackPath = ""
+	}
+
 	var err error
 	var logger *zap.Logger
-	config, usedConfigFile, err := acmedns.ReadConfig(*configPtr, "./config.cfg")
+	config, usedConfigFile, err := acmedns.ReadConfig(configPath, fallbackPath)
 	if err != nil {
 		fmt.Fprintf(stderr, "Error: %s\n", err)
 		if *configTestFlag {
@@ -91,6 +106,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	// Initialize API and DNS servers
 	apiserver := api.Init(&config, db, sugar, errChan)
+	if testRun {
+		sugar.Info("test run successfully")
+		return 0
+	}
 	dnsservers := nameserver.InitAndStart(&config, db, sugar, errChan, versionStr)
 	go apiserver.Start(dnsservers)
 

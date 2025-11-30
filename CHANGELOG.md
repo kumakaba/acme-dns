@@ -2,8 +2,8 @@
 - v1.3.0-preview
    - WIP: feat: Implemented DNS over TLS (DoT)
       - Added `general/dot_listen` and `general/tls_cert_filepath` and `general/tls_key_filepath` configuration options to [config.cfg](/config.cfg).
-      - NOTE: You need to specify the path to the cert file in config. Because issuing wildcard certificates using "certmagic" appears to be difficult, acme-dns does not support automatic certificate renewal for DoT; you must obtain a wildcard certificate using other means, such as "acme.sh".
-         - At this point, it's unlikely that any CA will use DoT/DoH, so this shouldn't be an issue.
+      - NOTE: You need manually specify the path to the wildcard certificate file in config. Because issuing wildcard certificates using "certmagic" appears to be difficult, acme-dns does not support automatic certificate renewal for DoT; you must obtain a wildcard certificate using other means, such as [acme.sh](https://github.com/acmesh-official/acme.sh).
+         - At this point, it's unlikely that any CA will use DoT/DoQ/DoH, so this shouldn't be an issue.
       - NOTE: DNS over HTTPS (DoH) implementation is currently not planned as it is considered a lower priority.
    - WIP: feat: Implemented DNS over QUIC (DoQ)
       - Added `general/enable_doq` and `general/doq_listen` configuration options to [config.cfg](/config.cfg).
@@ -44,7 +44,7 @@
       - Configuration value for "tls": "letsencryptstaging". Setting it will help you to debug possible issues with HTTP API certificate acquiring process. This is the new default value.
    - Changed
       - Fixed: EDNS0 support
-      - Migrated from autocert to [certmagic](https://github.com/mholt/certmagic) for HTTP API certificate handling
+      - Migrated from autocert to [certmagic](https://github.com/caddyserver/certmagic) for HTTP API certificate handling
 - v0.7.2
    - Changed
       - Fixed: Regression error of not being able to answer to incoming random-case requests.

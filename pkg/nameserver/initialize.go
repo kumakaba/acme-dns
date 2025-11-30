@@ -236,7 +236,7 @@ func (n *Nameserver) StartDoQ(errorChannel chan error) {
 	}
 	n.quicListener = listener
 
-	n.Logger.Infow("Starting DoQ listener", "addr", n.Server.Addr, "proto", "udp-quic")
+	n.Logger.Infow("Starting DNS listener", "addr", n.Server.Addr, "proto", "udp-quic")
 
 	if n.NotifyStartedFunc != nil {
 		n.NotifyStartedFunc()

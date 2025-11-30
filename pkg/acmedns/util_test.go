@@ -149,8 +149,8 @@ func TestReadConfigNotFallbackAtEmptyPath(t *testing.T) {
 
 	// Does not fallback if filepath is specified
 	_, _, err = ReadConfig(path, testPath)
-	if err == nil {
-		t.Fatalf("Expect error configuration file not found, but noerror")
+	if err != nil {
+		t.Fatalf("Expect noerror because fallback, but err: %s", err)
 	}
 
 }

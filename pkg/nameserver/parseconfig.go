@@ -46,7 +46,12 @@ func (n *Nameserver) appendRR(rr dns.RR) {
 		drecs.Records = append(drecs.Records, rr)
 		n.Domains[addDomain] = drecs
 	}
+	proto := ""
+	if n.Server != nil {
+		proto = n.Server.Net
+	}
 	n.Logger.Debugw("Adding new record to domain",
+		"proto", proto,
 		"recordtype", dns.TypeToString[rr.Header().Rrtype],
 		"domain", addDomain)
 }
