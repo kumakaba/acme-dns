@@ -1,15 +1,15 @@
 
-- v1.3.0-preview
-   - WIP: feat: Implemented DNS over TLS (DoT)
-      - Added `general/dot_listen` and `general/tls_cert_filepath` and `general/tls_key_filepath` configuration options to [config.cfg](/config.cfg).
-      - NOTE: You need manually specify the path to the wildcard certificate file in config. Because issuing wildcard certificates using "certmagic" appears to be difficult, acme-dns does not support automatic certificate renewal for DoT; you must obtain a wildcard certificate using other means, such as [acme.sh](https://github.com/acmesh-official/acme.sh).
-         - At this point, it's unlikely that any CA will use DoT/DoQ/DoH, so this shouldn't be an issue.
-      - NOTE: DNS over HTTPS (DoH) implementation is currently not planned as it is considered a lower priority.
-   - WIP: feat: Implemented DNS over QUIC (DoQ)
-      - Added `general/enable_doq` and `general/doq_listen` configuration options to [config.cfg](/config.cfg).
-      - This implementation is intended to be [RFC9250](https://www.rfc-editor.org/rfc/rfc9250) compliant.
-      - NOTE: DoQ must be enabled `general/enable_doq` in the config and will function with DoT enabled.
-      - NOTE: DoQ has only been tested with [doggo](https://github.com/mr-karan/doggo/).
+- v1.3.0
+   - New
+      - Implemented DNS over TLS (DoT)
+         - Added `general/dot_listen` and `general/tls_cert_filepath` and `general/tls_key_filepath` configuration options to [config.cfg](/config.cfg).
+         - NOTE: You need manually specify the path to the wildcard certificate file in config. Because issuing wildcard certificates using "certmagic" appears to be difficult, acme-dns does not support automatic certificate renewal for DoT; you must obtain a wildcard certificate using other means, such as [acme.sh](https://github.com/acmesh-official/acme.sh).
+            - At this point, it's unlikely that any CA will use DoT/DoQ/DoH, so this shouldn't be an issue.
+      - Implemented DNS over QUIC (DoQ)
+         - Added `general/enable_doq` and `general/doq_listen` configuration options to [config.cfg](/config.cfg).
+         - This implementation is intended to be [RFC9250](https://www.rfc-editor.org/rfc/rfc9250) compliant.
+         - NOTE: DoQ must be enabled `general/enable_doq` in the config and will function with DoT enabled.
+      - **NOTE: Since CA do not use DoT/DoQ to verify DNS-01 challenges, this feature is practically redundant for the core purpose of acme-dns.** It was implemented primarily out of personal curiosity and for experimental purposes.
    - Changed
       - Refactoring Logging logic
          - Add value `both` (stdout+file) for `logconfig/logtype` configuration option.

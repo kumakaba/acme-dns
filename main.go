@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	Version  = "v1.3.0"           // VERSION_STR
-	Revision = "preview20251130c" // VERSION_STR
+	Version  = "v1.3.0"  // VERSION_STR
+	Revision = "release" // VERSION_STR
 )
 
 func main() {

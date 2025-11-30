@@ -9,8 +9,8 @@ services:
       - "53:53"
       - "53:53/udp"
       - "80:80"
-      - "853:853"
-      - "853:853/udp"
+      # - "853:853"
+      # - "853:853/udp"
     volumes:
       - ./config:/etc/acme-dns:ro
       - acme-dns-data:/var/lib/acme-dns
