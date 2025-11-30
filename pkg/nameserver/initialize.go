@@ -37,52 +37,18 @@ type Nameserver struct {
 }
 
 func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, errChan chan error, versionStr string) []acmedns.AcmednsNS {
+	var protocols []string
 	dnsservers := make([]acmedns.AcmednsNS, 0)
-	waitLock := sync.Mutex{}
-	if strings.HasPrefix(config.General.Proto, "both") {
 
-		// Handle the case where DNS server should be started for both udp and tcp
-		udpProto := "udp"
-		tcpProto := "tcp"
-		if strings.HasSuffix(config.General.Proto, "4") {
-			udpProto += "4"
-			tcpProto += "4"
-		} else if strings.HasSuffix(config.General.Proto, "6") {
-			udpProto += "6"
-			tcpProto += "6"
-		}
-		dnsServerUDP := NewDNSServer(config, db, logger, udpProto, versionStr)
-		dnsservers = append(dnsservers, dnsServerUDP)
-		dnsServerUDP.ParseRecords()
-		dnsServerTCP := NewDNSServer(config, db, logger, tcpProto, versionStr)
-		dnsservers = append(dnsservers, dnsServerTCP)
-		dnsServerTCP.ParseRecords()
-		// wait for the server to get started to proceed
-		waitLock.Lock()
-		dnsServerUDP.SetNotifyStartedFunc(waitLock.Unlock)
-		go dnsServerUDP.Start(errChan)
-		waitLock.Lock()
-		dnsServerTCP.SetNotifyStartedFunc(waitLock.Unlock)
-		go dnsServerTCP.Start(errChan)
-		waitLock.Lock()
-	} else {
-		dnsServer := NewDNSServer(config, db, logger, config.General.Proto, versionStr)
-		dnsservers = append(dnsservers, dnsServer)
-		dnsServer.ParseRecords()
-		waitLock.Lock()
-		dnsServer.SetNotifyStartedFunc(waitLock.Unlock)
-		go dnsServer.Start(errChan)
-		waitLock.Lock()
-	}
-
-	waitLock.Unlock()
-
-	// DoT (DNS over TLS)
+	nsListen := config.General.Listen
 	dotListen := config.General.DoTListen
+	doqListen := config.General.DoQListen
 	tlsCert := config.General.TlsCertFile
 	tlsKey := config.General.TlsKeyFile
+	tlsEnable := false
+
 	if tlsCert != "" && tlsKey != "" {
-		tlsEnable := true
+		tlsEnable = true
 		if !acmedns.FileIsAccessible(tlsCert) {
 			logger.Error("Not accessible tls certfile")
 			tlsEnable = false
@@ -91,70 +57,87 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 			logger.Error("Not accessible tls keyfile")
 			tlsEnable = false
 		}
-		if tlsEnable {
-			logger.Debugw("TLS config found setup for DoT/DoQ", "tls_cert_filepath", tlsCert, "tls_key_filepath", tlsKey)
-			dotProto := "tcp-tls"
-			if strings.HasSuffix(config.General.Proto, "4") {
-				dotProto += "4"
-			} else if strings.HasSuffix(config.General.Proto, "6") {
-				dotProto += "6"
-			}
+		logger.Debugw("TLS config found setup for DoT/DoQ", "tls_cert_filepath", tlsCert, "tls_key_filepath", tlsKey)
+		_, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+		if err != nil {
+			logger.Errorw("Failed to load TLS certs. disable DoT/DoQ", "error", err)
+			tlsEnable = false
+		}
+	}
 
-			dotServer := NewDNSServer(config, db, logger, dotProto, versionStr)
+	if strings.HasPrefix(config.General.Proto, "both") {
+		if strings.HasSuffix(config.General.Proto, "4") {
+			protocols = append(protocols, "udp4")
+			protocols = append(protocols, "tcp4")
+		} else if strings.HasSuffix(config.General.Proto, "6") {
+			protocols = append(protocols, "udp6")
+			protocols = append(protocols, "tcp6")
+		} else {
+			protocols = append(protocols, "udp")
+			protocols = append(protocols, "tcp")
+		}
+	} else {
+		protocols = append(protocols, config.General.Proto)
+	}
+	if tlsEnable {
+		protocols = append(protocols, "tcp-tls")
+		if config.General.EnableDoQ {
+			protocols = append(protocols, "udp-quic")
+		}
+	}
 
+nsloop:
+	for i, protocol := range protocols {
+		logger.Debugw("Init and Start Nameserver", "i", i, "protocol", protocol)
+		var dnsListen string
+		serverProto := protocol
+		switch protocol {
+		case "udp", "udp4", "udp6":
+			dnsListen = nsListen
+		case "tcp", "tcp4", "tcp6":
+			dnsListen = nsListen
+		case "tcp-tls": // DoT
 			if dotListen == "" {
-				dotListen = ":853"
+				dnsListen = ":853"
+			} else {
+				dnsListen = dotListen
 			}
-			dotServer.(*Nameserver).Server.Addr = dotListen
+		case "udp-quic": // DoQ
+			if doqListen == "" {
+				dnsListen = ":853"
+			} else {
+				dnsListen = doqListen
+			}
+		default:
+			continue nsloop
+		}
+		dnsServer := NewDNSServer(config, db, logger, serverProto, versionStr)
+		dnsServer.(*Nameserver).Server.Addr = dnsListen
 
+		switch protocol {
+		case "tcp-tls": // DoT
 			cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
 			if err != nil {
-				logger.Errorw("Failed to load TLS certs for DoT", "error", err)
-			} else {
-				// logger.Debug("configure dotServer")
-				dotServer.(*Nameserver).Server.TLSConfig = &tls.Config{
-					Certificates: []tls.Certificate{cert},
-					MinVersion:   tls.VersionTLS12,
-				}
-
-				// logger.Debug("append dotServer")
-				dnsservers = append(dnsservers, dotServer)
-				// logger.Debug("dotServer.ParseRecords")
-				dotServer.ParseRecords()
-
-				waitLock.Lock()
-				// logger.Debug("dotServer.SetNotifyStartedFunc")
-				dotServer.SetNotifyStartedFunc(waitLock.Unlock)
-				// logger.Debug("dotServer.Start")
-				go dotServer.Start(errChan)
-				waitLock.Lock()
-
-				// DoQ (DNS over QUIC)
-				if config.General.EnableDoQ {
-					waitLock.Unlock()
-
-					// logger.Debug("configure doqServer")
-					doqListen := config.General.DoQListen
-					if doqListen == "" {
-						doqListen = ":853"
-					}
-					doqServer := NewDNSServer(config, db, logger, "udp-quic", versionStr)
-					doqServer.(*Nameserver).Server.Addr = doqListen
-
-					dnsservers = append(dnsservers, doqServer)
-					doqServer.ParseRecords()
-
-					waitLock.Lock()
-					doqServer.SetNotifyStartedFunc(waitLock.Unlock)
-
-					go doqServer.Start(errChan)
-					waitLock.Lock()
-				}
+				logger.Errorw("Failed to load TLS certs for DoT/DoQ", "error", err)
+				continue nsloop
 			}
-		} else {
-			logger.Error("Failed to start DoT")
+			dnsServer.(*Nameserver).Server.TLSConfig = &tls.Config{
+				Certificates: []tls.Certificate{cert},
+				MinVersion:   tls.VersionTLS12,
+			}
+		case "udp-quic": // DoQ
+		default:
+			break
 		}
+		// logger.Debugw("Complete setup Nameserver", "i", i, "protocol", serverProto, "listen", dnsListen)
+		dnsservers = append(dnsservers, dnsServer)
+		dnsServer.ParseRecords()
 
+		var wg sync.WaitGroup
+		wg.Add(1)
+		dnsServer.SetNotifyStartedFunc(wg.Done)
+		go dnsServer.Start(errChan)
+		wg.Wait()
 	}
 
 	return dnsservers

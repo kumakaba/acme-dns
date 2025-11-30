@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/binary"
 	"encoding/pem"
 	"math/big"
 
@@ -23,6 +24,7 @@ import (
 
 	"github.com/erikstmartin/go-testdb"
 	"github.com/miekg/dns"
+	"github.com/quic-go/quic-go"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 
@@ -783,6 +785,119 @@ func TestDoTResolve(t *testing.T) {
 			if a.A.String() != "192.168.1.100" {
 				t.Errorf("Expected 192.168.1.100, got %s", a.A.String())
 			}
+		}
+	}
+}
+
+// ////////////////////////////////////////////////
+// DoQ Test
+// ////////////////////////////////////////////////
+
+func TestDoQResolve(t *testing.T) {
+	certPath, keyPath := generateSelfSignedCert(t)
+
+	config, logger, _ := fakeConfigAndLogger()
+	config.General.Domain = "auth.example.org"
+	config.General.Listen = "127.0.0.1:28853"
+	config.General.Proto = "udp-quic"
+	config.General.DoQListen = config.General.Listen
+	config.General.TlsCertFile = certPath
+	config.General.TlsKeyFile = keyPath
+	config.General.StaticRecords = records
+	config.General.Nsname = "ns1.auth.example.org"
+	config.General.Nsadmin = "admin.example.org"
+	config.General.EnableDoQ = true
+
+	db, _ := database.Init(&config, logger)
+
+	serverInterface := NewDoQServer(&config, db, logger, "vTestDoQ")
+	server := serverInterface.(*Nameserver)
+
+	server.ParseRecords()
+	server.OwnDomain = "auth.example.org."
+
+	errChan := make(chan error, 1)
+	waitLock := sync.Mutex{}
+	waitLock.Lock()
+	server.SetNotifyStartedFunc(waitLock.Unlock)
+
+	go server.Start(errChan)
+
+	t.Cleanup(func() {
+		_ = server.Shutdown(t.Context())
+	})
+
+	waitLock.Lock()
+
+	tlsConf := &tls.Config{
+		InsecureSkipVerify: true,
+		NextProtos:         []string{"doq"},
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	conn, err := quic.DialAddr(ctx, config.General.Listen, tlsConf, nil)
+	if err != nil {
+		t.Fatalf("Failed to dial QUIC: %v", err)
+	}
+	defer func() {
+		_ = conn.CloseWithError(0, "")
+	}()
+
+	stream, err := conn.OpenStreamSync(ctx)
+	if err != nil {
+		t.Fatalf("Failed to open stream: %v", err)
+	}
+	defer stream.Close()
+
+	msg := new(dns.Msg)
+	msg.SetQuestion(dns.Fqdn("auth.example.org"), dns.TypeA)
+	packed, err := msg.Pack()
+	if err != nil {
+		t.Fatalf("Failed to pack DNS message: %v", err)
+	}
+
+	reqBuf := make([]byte, 2+len(packed))
+	binary.BigEndian.PutUint16(reqBuf[:2], uint16(len(packed)))
+	copy(reqBuf[2:], packed)
+
+	_, err = stream.Write(reqBuf)
+	if err != nil {
+		t.Fatalf("Failed to write to stream: %v", err)
+	}
+
+	lenBuf := make([]byte, 2)
+	_, err = stream.Read(lenBuf)
+	if err != nil {
+		t.Fatalf("Failed to read length prefix: %v", err)
+	}
+	respLen := binary.BigEndian.Uint16(lenBuf)
+
+	respBuf := make([]byte, respLen)
+	_, err = stream.Read(respBuf)
+	if err != nil {
+		t.Fatalf("Failed to read response body: %v", err)
+	}
+
+	respMsg := new(dns.Msg)
+	err = respMsg.Unpack(respBuf)
+	if err != nil {
+		t.Fatalf("Failed to unpack response message: %v", err)
+	}
+
+	if respMsg.Rcode != dns.RcodeSuccess {
+		t.Errorf("Expected RcodeSuccess, got %s", dns.RcodeToString[respMsg.Rcode])
+	}
+	if len(respMsg.Answer) == 0 {
+		t.Error("No answer for DoQ query")
+	} else {
+		if a, ok := respMsg.Answer[0].(*dns.A); ok {
+			if a.A.String() != "192.168.1.100" {
+				t.Errorf("Expected 192.168.1.100, got %s", a.A.String())
+			}
+		} else {
+			t.Errorf("Expected A record, got %T", respMsg.Answer[0])
 		}
 	}
 }
