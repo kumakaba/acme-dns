@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	Version  = "v1.3.0"  // VERSION_STR
-	Revision = "release" // VERSION_STR
+	Version  = "v1.3.1"           // VERSION_STR
+	Revision = "preview20251203a" // VERSION_STR
 )
 
 func main() {
@@ -106,11 +106,11 @@ func run(args []string, stdout, stderr io.Writer, testRun bool) int {
 
 	// Initialize API and DNS servers
 	apiserver := api.Init(&config, db, sugar, errChan)
+	dnsservers := nameserver.InitAndStart(&config, db, sugar, errChan, versionStr, testRun)
 	if testRun {
 		sugar.Info("test run successfully")
 		return 0
 	}
-	dnsservers := nameserver.InitAndStart(&config, db, sugar, errChan, versionStr)
 	go apiserver.Start(dnsservers)
 
 	select {

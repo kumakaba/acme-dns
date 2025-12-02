@@ -526,7 +526,7 @@ func TestNewDNSServerAllProto(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nsInterface := NewDNSServer(&config, db, logger, tt.proto, "v1.0.0")
+			nsInterface := NewDNSServer(&config, db, logger, tt.proto, "v1.0.0", nil)
 
 			ns, ok := nsInterface.(*Nameserver)
 			if !ok {
@@ -571,7 +571,7 @@ func TestInitAndStartSingleProtocols(t *testing.T) {
 
 	errChan := make(chan error, 10)
 
-	servers := InitAndStart(&config, db, logger, errChan, "vTest")
+	servers := InitAndStart(&config, db, logger, errChan, "vTest", false)
 
 	t.Cleanup(func() {
 		for _, s := range servers {
@@ -607,12 +607,14 @@ func TestInitAndStartBothProtocols(t *testing.T) {
 	config.General.DoTListen = "127.0.0.1:25853"
 	config.General.TlsCertFile = certPath
 	config.General.TlsKeyFile = keyPath
+	config.General.DoQListen = "127.0.0.1:25853"
+	config.General.EnableDoQ = true
 
 	db, _ := database.Init(&config, logger)
 
 	errChan := make(chan error, 10)
 
-	servers := InitAndStart(&config, db, logger, errChan, "vTest")
+	servers := InitAndStart(&config, db, logger, errChan, "vTest", false)
 
 	t.Cleanup(func() {
 		for _, s := range servers {
@@ -622,7 +624,7 @@ func TestInitAndStartBothProtocols(t *testing.T) {
 		}
 	})
 
-	expectedCount := 3
+	expectedCount := 4
 	if len(servers) != expectedCount {
 		t.Errorf("Expected %d servers started, but got %d", expectedCount, len(servers))
 	}
@@ -640,8 +642,65 @@ func TestInitAndStartBothProtocols(t *testing.T) {
 		t.Error("TCP server not started")
 	}
 
-	if !protocols["tcp-tls"] && !protocols["tcp-tls4"] && !protocols["tcp-tls6"] {
+	if !protocols["tcp-tls"] {
 		t.Error("DoT (tcp-tls) server not started")
+	}
+	if !protocols["udp-quic"] {
+		t.Error("DoQ (udp-quic) server not started")
+	}
+}
+
+func TestInitAndStartBoth4Protocols(t *testing.T) {
+	certPath, keyPath := generateSelfSignedCert(t)
+
+	config, logger, _ := fakeConfigAndLogger()
+	config.General.Listen = ":15353"
+	config.General.Proto = "both4"
+
+	config.General.DoTListen = ""
+	config.General.TlsCertFile = certPath
+	config.General.TlsKeyFile = keyPath
+	config.General.DoQListen = ""
+	config.General.EnableDoQ = true
+
+	db, _ := database.Init(&config, logger)
+
+	errChan := make(chan error, 10)
+
+	servers := InitAndStart(&config, db, logger, errChan, "vTest", true)
+
+	expectedCount := 4
+	if len(servers) != expectedCount {
+		t.Errorf("Expected %d servers started, but got %d", expectedCount, len(servers))
+	}
+
+	protocols := make(map[string]bool)
+	listenaddr := make(map[string]bool)
+	for _, s := range servers {
+		ns := s.(*Nameserver)
+		protocols[ns.Server.Net] = true
+		listenaddr[ns.Server.Addr] = true
+	}
+
+	if !protocols["udp4"] {
+		t.Error("UDP server not started")
+	}
+	if !protocols["tcp4"] {
+		t.Error("TCP server not started")
+	}
+
+	if !protocols["tcp-tls"] {
+		t.Error("DoT (tcp-tls) server not started")
+	}
+	if !protocols["udp-quic"] {
+		t.Error("DoQ (udp-quic) server not started")
+	}
+
+	if !listenaddr[":15353"] {
+		t.Error("UDP/TCP server listenaddr not initialize")
+	}
+	if !listenaddr[":853"] {
+		t.Error("DoT/DoQ server listenaddr not initialize")
 	}
 }
 
@@ -809,8 +868,9 @@ func TestDoQResolve(t *testing.T) {
 	config.General.EnableDoQ = true
 
 	db, _ := database.Init(&config, logger)
+	c, _ := tls.LoadX509KeyPair(certPath, keyPath)
 
-	serverInterface := NewDoQServer(&config, db, logger, "vTestDoQ")
+	serverInterface := NewDoQServer(&config, db, logger, "vTestDoQ", &c)
 	server := serverInterface.(*Nameserver)
 
 	server.ParseRecords()

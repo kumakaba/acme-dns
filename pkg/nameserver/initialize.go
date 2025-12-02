@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -26,6 +28,7 @@ type Nameserver struct {
 	DB                acmedns.AcmednsDB
 	Logger            *zap.SugaredLogger
 	Server            *dns.Server
+	TLSCertificate    *tls.Certificate
 	quicListener      *quic.Listener
 	OwnDomain         string
 	NotifyStartedFunc func()
@@ -36,8 +39,9 @@ type Nameserver struct {
 	version           string
 }
 
-func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, errChan chan error, versionStr string) []acmedns.AcmednsNS {
+func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, errChan chan error, versionStr string, testRun bool) []acmedns.AcmednsNS {
 	var protocols []string
+	var loadedCert *tls.Certificate
 	dnsservers := make([]acmedns.AcmednsNS, 0)
 
 	nsListen := config.General.Listen
@@ -58,10 +62,12 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 			tlsEnable = false
 		}
 		logger.Debugw("TLS config found setup for DoT/DoQ", "tls_cert_filepath", tlsCert, "tls_key_filepath", tlsKey)
-		_, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+		c, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
 		if err != nil {
 			logger.Errorw("Failed to load TLS certs. disable DoT/DoQ", "error", err)
 			tlsEnable = false
+		} else {
+			loadedCert = &c
 		}
 	}
 
@@ -90,39 +96,40 @@ nsloop:
 	for i, protocol := range protocols {
 		logger.Debugw("Init and Start Nameserver", "i", i, "protocol", protocol)
 		var dnsListen string
+		var certToPass *tls.Certificate
 		serverProto := protocol
+
 		switch protocol {
 		case "udp", "udp4", "udp6":
 			dnsListen = nsListen
+			certToPass = nil
 		case "tcp", "tcp4", "tcp6":
 			dnsListen = nsListen
+			certToPass = nil
 		case "tcp-tls": // DoT
 			if dotListen == "" {
 				dnsListen = ":853"
 			} else {
 				dnsListen = dotListen
 			}
+			certToPass = loadedCert
 		case "udp-quic": // DoQ
 			if doqListen == "" {
 				dnsListen = ":853"
 			} else {
 				dnsListen = doqListen
 			}
+			certToPass = loadedCert
 		default:
 			continue nsloop
 		}
-		dnsServer := NewDNSServer(config, db, logger, serverProto, versionStr)
+		dnsServer := NewDNSServer(config, db, logger, serverProto, versionStr, certToPass)
 		dnsServer.(*Nameserver).Server.Addr = dnsListen
 
 		switch protocol {
 		case "tcp-tls": // DoT
-			cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
-			if err != nil {
-				logger.Errorw("Failed to load TLS certs for DoT/DoQ", "error", err)
-				continue nsloop
-			}
 			dnsServer.(*Nameserver).Server.TLSConfig = &tls.Config{
-				Certificates: []tls.Certificate{cert},
+				Certificates: []tls.Certificate{*certToPass},
 				MinVersion:   tls.VersionTLS12,
 			}
 		case "udp-quic": // DoQ
@@ -133,19 +140,26 @@ nsloop:
 		dnsservers = append(dnsservers, dnsServer)
 		dnsServer.ParseRecords()
 
-		var wg sync.WaitGroup
-		wg.Add(1)
-		dnsServer.SetNotifyStartedFunc(wg.Done)
-		go dnsServer.Start(errChan)
-		wg.Wait()
+		if !testRun {
+			var wg sync.WaitGroup
+			wg.Add(1)
+			dnsServer.SetNotifyStartedFunc(wg.Done)
+			go dnsServer.Start(errChan)
+			wg.Wait()
+		}
 	}
 
 	return dnsservers
 }
 
 // NewDNSServer parses the DNS records from config and returns a new DNSServer struct
-func NewDNSServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, proto string, versionStr string) acmedns.AcmednsNS {
-	server := Nameserver{Config: config, DB: db, Logger: logger}
+func NewDNSServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, proto string, versionStr string, cert *tls.Certificate) acmedns.AcmednsNS {
+	server := Nameserver{
+		Config:         config,
+		DB:             db,
+		Logger:         logger,
+		TLSCertificate: cert,
+	}
 	server.Server = &dns.Server{Addr: config.General.Listen, Net: proto}
 	domain := config.General.Domain
 	if !strings.HasSuffix(domain, ".") {
@@ -183,19 +197,16 @@ func (n *Nameserver) Start(errorChannel chan error) {
 }
 
 // DoQ
-func NewDoQServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, versionStr string) acmedns.AcmednsNS {
-	server := NewDNSServer(config, db, logger, "udp-quic", versionStr)
+func NewDoQServer(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, versionStr string, cert *tls.Certificate) acmedns.AcmednsNS {
+	server := NewDNSServer(config, db, logger, "udp-quic", versionStr, cert)
 	return server
 }
 
 func (n *Nameserver) StartDoQ(errorChannel chan error) {
 	n.errChan = errorChannel
 
-	tlsCert := n.Config.General.TlsCertFile
-	tlsKey := n.Config.General.TlsKeyFile
-
-	cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
-	if err != nil {
+	if n.TLSCertificate == nil {
+		err := fmt.Errorf("TLS certificate not loaded for DoQ")
 		errorChannel <- err
 		if n.NotifyStartedFunc != nil {
 			n.NotifyStartedFunc()
@@ -204,7 +215,7 @@ func (n *Nameserver) StartDoQ(errorChannel chan error) {
 	}
 
 	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
+		Certificates: []tls.Certificate{*n.TLSCertificate},
 		NextProtos:   []string{"doq"}, // RFC 9250 ALPN
 		MinVersion:   tls.VersionTLS12,
 	}
@@ -228,7 +239,11 @@ func (n *Nameserver) StartDoQ(errorChannel chan error) {
 	for {
 		conn, err := n.quicListener.Accept(context.Background())
 		if err != nil {
-			n.Logger.Infow("DoQ listener stopped", "error", err)
+			if errors.Is(err, quic.ErrServerClosed) {
+				// n.Logger.Debug("DoQ listener closed gracefully")
+			} else {
+				n.Logger.Infow("DoQ listener stopped unexpectedly", "error", err)
+			}
 			return
 		}
 

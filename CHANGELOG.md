@@ -1,4 +1,7 @@
 
+- v1.3.1-preview
+   - WIP: Refactoring Nameserver logic
+
 - v1.3.0
    - New
       - Implemented DNS over TLS (DoT)
