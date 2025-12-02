@@ -195,14 +195,8 @@ func (n *Nameserver) Start(errorChannel chan error) {
 		}
 	}
 	n.Server.NotifyStartedFunc = notifyOnce
-	n.Logger.Debugw("set n.Server.NotifyStartedFunc",
-		"addr", n.Server.Addr,
-		"proto", n.Server.Net)
 
 	err := n.Server.ListenAndServe()
-	n.Logger.Debugw("n.Server.ListenAndServe()",
-		"addr", n.Server.Addr,
-		"proto", n.Server.Net)
 	if err != nil {
 		notifyOnce()
 		errorChannel <- err
