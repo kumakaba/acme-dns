@@ -1,5 +1,5 @@
 
-- v1.3.1-preview
+- v1.3.1
    - New
       - feat: implement RFC 8482 handling for ANY queries
    - Changed
