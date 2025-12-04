@@ -15,6 +15,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -228,6 +229,40 @@ func TestResolveA(t *testing.T) {
 	if err == nil {
 		t.Errorf("Was expecting error because of NXDOMAIN but got none")
 		return
+	}
+}
+
+func TestResolveANY(t *testing.T) {
+	_, _, _ = startTestDNS(t)
+	resolv := resolver{server: "127.0.0.1:15353"}
+
+	answer, err := resolv.lookup("auth.example.org", dns.TypeANY)
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+	if len(answer.Answer) == 0 {
+		t.Error("No answer for DNS query")
+		return
+	}
+	if !strings.Contains(answer.String(), "HINFO") {
+		t.Error("Not found HINFO in answer")
+	}
+	if !strings.Contains(answer.String(), "\"RFC8482\"") {
+		t.Error("Not found RFC8482 in answer")
+	}
+
+	answer, err = resolv.lookup("nonexistent.domain.tld", dns.TypeANY)
+	if err == nil {
+		t.Errorf("Was expecting error because of NXDOMAIN but got none")
+		return
+	}
+	if len(answer.Answer) != 0 {
+		t.Error("No answer for DNS query")
+		return
+	}
+	if !strings.Contains(answer.String(), "REFUSED") {
+		t.Error("Not found REFUSED in answer")
 	}
 }
 

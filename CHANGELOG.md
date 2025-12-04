@@ -1,6 +1,11 @@
 
 - v1.3.1-preview
-   - WIP: Refactoring Nameserver logic
+   - New
+      - feat: implement RFC 8482 handling for ANY queries
+   - Changed
+      - Refactoring Nameserver logic
+         - fix deadlock: notify waitgroup before sending error to channel
+      - Updated dependencies
 
 - v1.3.0
    - New

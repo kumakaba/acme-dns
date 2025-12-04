@@ -93,6 +93,26 @@ func (n *Nameserver) answer(ctx context.Context, q dns.Question) ([]dns.RR, int,
 		rcode = dns.RcodeNameError // NXDOMAIN
 	}
 
+	if q.Qtype == dns.TypeANY {
+		r := new(dns.HINFO)
+		r.Hdr = dns.RR_Header{
+			Name:   q.Name,
+			Rrtype: dns.TypeHINFO,
+			Class:  dns.ClassINET,
+			Ttl:    0,
+		}
+		r.Cpu = "RFC8482"
+		r.Os = ""
+		answers = append(answers, r)
+
+		n.Logger.Debugw("Answering ANY question with RFC8482 HINFO",
+			"proto", n.Server.Net,
+			"domain", q.Name,
+			"rcode", dns.RcodeToString[dns.RcodeSuccess])
+
+		return answers, dns.RcodeSuccess, authoritative, nil
+	}
+
 	r, _ := n.getRecord(q)
 	answers = append(answers, r...)
 	if q.Qtype == dns.TypeTXT {
