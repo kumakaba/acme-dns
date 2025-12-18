@@ -1,7 +1,7 @@
 
 - v1.3.1
    - New
-      - feat: implement RFC 8482 handling for ANY queries
+      - Implemented [RFC8482](https://www.rfc-editor.org/rfc/rfc8482) handling for ANY queries
    - Changed
       - Refactoring Nameserver logic
          - fix deadlock: notify waitgroup before sending error to channel
