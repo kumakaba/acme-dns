@@ -1,6 +1,6 @@
 module github.com/kumakaba/acme-dns
 
-go 1.25
+go 1.25.5
 
 require (
 	github.com/BurntSushi/toml v1.4.0

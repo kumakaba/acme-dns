@@ -58,7 +58,7 @@ func (a *AcmednsAPI) webRegisterPost(w http.ResponseWriter, r *http.Request, _ h
 		a.Logger.Errorw("Error in registration",
 			"error", err.Error())
 	} else {
-		a.Logger.Debugw("Created new user",
+		a.Logger.Debugw("Create new user",
 			"user", nu.Username.String())
 		regStruct := RegResponse{nu.Username.String(), nu.Password, nu.Subdomain + "." + a.Config.General.Domain, nu.Subdomain, nu.AllowFrom.ValidEntries()}
 		regStatus = http.StatusCreated
@@ -69,6 +69,9 @@ func (a *AcmednsAPI) webRegisterPost(w http.ResponseWriter, r *http.Request, _ h
 			a.Logger.Errorw("Could not marshal JSON",
 				"error", "json")
 		}
+		a.Logger.Infow("Create new user successed",
+			"user", nu.Username.String(),
+			"subdomain", nu.Subdomain)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(regStatus)
