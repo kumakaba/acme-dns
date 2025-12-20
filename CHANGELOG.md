@@ -1,4 +1,10 @@
 
+- v1.3.2
+   - Changed
+      - Refactoring Api logic
+         - Changed the log level when executing `/register` with api from `debug` to `info`.
+      - Updated dependencies
+
 - v1.3.1
    - New
       - Implemented [RFC8482](https://www.rfc-editor.org/rfc/rfc8482) handling for ANY queries
