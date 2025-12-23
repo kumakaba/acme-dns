@@ -42,7 +42,7 @@ func (a *AcmednsAPI) webUpdatePost(w http.ResponseWriter, r *http.Request, _ htt
 			updStatus = http.StatusInternalServerError
 			upd = jsonError("db_error")
 		} else {
-			a.Logger.Debugw("TXT record updated",
+			a.Logger.Infow("TXT record updated",
 				"subdomain", atxt.Subdomain,
 				"txt", atxt.Value)
 			updStatus = http.StatusOK

@@ -1,4 +1,10 @@
 
+- v1.3.3-preview
+   - Changed
+      - Refactoring Api logic
+         - Changed the log level when successfully `/update` with api from `debug` to `info`.
+      - Updated dependencies
+
 - v1.3.2
    - Changed
       - Refactoring Api logic
