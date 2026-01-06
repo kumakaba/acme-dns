@@ -20,7 +20,7 @@ import (
 
 var (
 	Version  = "v1.3.3"           // VERSION_STR
-	Revision = "preview20251223a" // VERSION_STR
+	Revision = "preview20260106a" // VERSION_STR
 )
 
 func main() {

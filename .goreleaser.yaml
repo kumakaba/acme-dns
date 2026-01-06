@@ -44,7 +44,6 @@ archives:
       - README.md
       - CHANGELOG.md
       - LICENSE
-      - Dockerfile
       - config.cfg
       - acme-dns.service
 
