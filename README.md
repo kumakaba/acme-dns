@@ -282,6 +282,7 @@ see [CHANGELOG.md](/CHANGELOG.md).
 
 - Add "options" table for record parameter extend (ex: created_at,description,etc...)
 - Change API root path (though using nginx as a reverse proxy would suffice)
+- If [DNS-PERSIST-01](https://www.ietf.org/archive/id/draft-ietf-acme-dns-persist-00.html) becomes the standard, this repository may become unnecessary.
 
 ## Contributing
 
