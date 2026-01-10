@@ -58,4 +58,5 @@ changelog:
       - "^test:"
       - "^fix "
       - "^Release "
+      - "^Updated dependencies"
 
