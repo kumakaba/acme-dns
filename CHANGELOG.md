@@ -1,4 +1,8 @@
 
+- v1.3.4-preview
+   - Changed
+      - Updated dependencies
+
 - v1.3.3
    - Changed
       - Refactoring Api logic
