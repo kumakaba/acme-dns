@@ -14,7 +14,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.10.9
 	github.com/mholt/acmez/v3 v3.1.4
-	github.com/miekg/dns v1.1.70
+	github.com/miekg/dns v1.1.72
 	github.com/quic-go/quic-go v0.59.0
 	github.com/rs/cors v1.11.1
 	go.uber.org/zap v1.27.1
