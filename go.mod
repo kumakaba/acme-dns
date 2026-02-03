@@ -1,6 +1,6 @@
 module github.com/kumakaba/acme-dns
 
-go 1.25.5
+go 1.25.6
 
 require (
 	github.com/BurntSushi/toml v1.6.0
@@ -12,7 +12,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.11.1
 	github.com/mholt/acmez/v3 v3.1.4
 	github.com/miekg/dns v1.1.72
 	github.com/quic-go/quic-go v0.59.0

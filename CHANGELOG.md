@@ -1,6 +1,7 @@
 
 - v1.3.4-preview
    - Changed
+      - Updated Go
       - Updated dependencies
 
 - v1.3.3
