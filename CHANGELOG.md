@@ -1,4 +1,8 @@
 
+- v1.3.5-preview
+   - Changed
+      - Updated dependencies
+
 - v1.3.4
    - Changed
       - Updated Go

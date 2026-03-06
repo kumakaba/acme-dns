@@ -868,6 +868,7 @@ func TestDoTResolve(t *testing.T) {
 	}
 	if in == nil {
 		t.Fatal("DoT Exchange returned nil message")
+		return
 	}
 	if in.Rcode != dns.RcodeSuccess {
 		t.Errorf("Expected RcodeSuccess, got %s", dns.RcodeToString[in.Rcode])
