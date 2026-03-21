@@ -1,8 +1,9 @@
 
-- v1.3.5
+- v1.3.6
    - Changed
       - Updated Go
       - Updated dependencies
+      - fix test
 
 - v1.3.4
    - Changed

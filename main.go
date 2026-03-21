@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	Version  = "v1.3.5"  // VERSION_STR
+	Version  = "v1.3.6"  // VERSION_STR
 	Revision = "release" // VERSION_STR
 )
 
