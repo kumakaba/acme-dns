@@ -1,5 +1,5 @@
 
-- v1.3.5-preview
+- v1.3.5
    - Changed
       - Updated Go
       - Updated dependencies
