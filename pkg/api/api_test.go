@@ -570,7 +570,7 @@ func TestSetupHandlerSuccess1(t *testing.T) {
 	}
 
 	targetpath := "/register"
-	req := httptest.NewRequest("GET", targetpath, nil)
+	req := httptest.NewRequestWithContext(t.Context(), "GET", targetpath, nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 	if w.Code != 405 {
@@ -605,7 +605,7 @@ func TestSetupHandlerSuccess2(t *testing.T) {
 	}
 
 	targetpath := "/register"
-	req := httptest.NewRequest("GET", targetpath, nil)
+	req := httptest.NewRequestWithContext(t.Context(), "GET", targetpath, nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 	if w.Code != 404 {
