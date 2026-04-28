@@ -5,20 +5,20 @@ go 1.25.0
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/caddyserver/certmagic v0.25.2
+	github.com/caddyserver/certmagic v0.25.3
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5
 	github.com/gavv/httpexpect v2.0.0+incompatible
 	github.com/glebarez/go-sqlite v1.22.0
-	github.com/go-playground/validator/v10 v10.30.1
+	github.com/go-playground/validator/v10 v10.30.2
 	github.com/google/uuid v1.6.0
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/lib/pq v1.12.0
+	github.com/lib/pq v1.12.3
 	github.com/mholt/acmez/v3 v3.1.6
 	github.com/miekg/dns v1.1.72
 	github.com/quic-go/quic-go v0.59.0
 	github.com/rs/cors v1.11.1
-	go.uber.org/zap v1.27.1
-	golang.org/x/crypto v0.49.0
+	go.uber.org/zap v1.28.0
+	golang.org/x/crypto v0.50.0
 )
 
 require (
@@ -35,7 +35,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fasthttp-contrib/websocket v0.0.0-20160511215533-1f3b11f56072 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
@@ -65,11 +65,11 @@ require (
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
 	github.com/yudai/pp v2.0.1+incompatible // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
-	golang.org/x/tools v0.42.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/tools v0.44.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.37.6 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
