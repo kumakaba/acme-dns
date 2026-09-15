@@ -135,10 +135,13 @@ You are encouraged to run your own acme-dns instance, because you are effectivel
 
 See the INSTALL section for information on how to do this.
 
+## Installation (easy)
 
-## Installation
+Download the latest version and the package that suits your environment from the [Releases](https://github.com/kumakaba/acme-dns/releases), extract it, and run the binary.
 
-1) Install [Go 1.25 or newer](https://golang.org/doc/install).
+## Installation (build)
+
+1) Install [Go 1.27 or newer](https://golang.org/doc/install).
 
 2) Build acme-dns: 
 ```
