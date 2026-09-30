@@ -141,7 +141,7 @@ Download the latest version and the package that suits your environment from the
 
 ## Installation (build)
 
-1) Install [Go 1.27 or newer](https://golang.org/doc/install).
+1) Install [Go 1.26 or newer](https://golang.org/doc/install).
 
 2) Build acme-dns: 
 ```

@@ -1,6 +1,6 @@
 module github.com/kumakaba/acme-dns
 
-go 1.27
+go 1.26.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
@@ -9,13 +9,13 @@ require (
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5
 	github.com/gavv/httpexpect v2.0.0+incompatible
 	github.com/glebarez/go-sqlite v1.23.0
-	github.com/go-playground/validator/v10 v10.30.4
+	github.com/go-playground/validator/v10 v10.30.5
 	github.com/google/uuid v1.6.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.12.3
-	github.com/mholt/acmez/v3 v3.1.6
+	github.com/mholt/acmez/v3 v3.1.7
 	github.com/miekg/dns v1.1.73
-	github.com/quic-go/quic-go v0.62.0
+	github.com/quic-go/quic-go v0.63.0
 	github.com/rs/cors v1.11.1
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.57.0
@@ -62,7 +62,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	modernc.org/libc v1.74.1 // indirect
