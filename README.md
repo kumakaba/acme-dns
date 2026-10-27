@@ -27,7 +27,7 @@ For longer explanation of the underlying issue and other proposed solutions, see
 
 A client application for acme-dns with support for Certbot authentication hooks is available at: [https://github.com/acme-dns/acme-dns-client](https://github.com/acme-dns/acme-dns-client).
 
-[![asciicast](https://asciinema.org/a/94903.png)](https://asciinema.org/a/94903)
+[![asciicast](https://asciinema.org/a/94903.svg)](https://asciinema.org/a/94903)
 
 Using acme-dns is a three-step process (provided you already have the self-hosted server set up):
 
